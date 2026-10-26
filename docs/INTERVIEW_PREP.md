@@ -1,0 +1,78 @@
+# Interview Prep
+
+Questions and model answers based on what was actually built in this project.
+Practise answering out loud before reading the answer.
+
+---
+
+## Project overview
+
+**Q: Walk me through your project architecture.**
+A: A push to main triggers GitHub Actions. The test job runs ESLint and Jest tests. If they pass, the deploy job authenticates to GCP with Workload Identity Federation, so no service account keys are stored in GitHub. It builds a Docker image tagged with the commit SHA, pushes it to Artifact Registry and deploys to Cloud Run staging automatically. Production needs manual approval through a GitHub Environment. The API key comes from Secret Manager, and a Cloud Monitoring uptime check on /health emails me if the app goes down. All GCP infrastructure is created with Terraform.
+
+---
+
+## Git and security
+
+**Q: Why is a `VITE_`-prefixed environment variable not a safe place for an API key?**
+A: Vite copies `VITE_*` values into the JavaScript bundle at build time, so they end up in the browser and anyone can read them in DevTools. Secrets must stay on a server. That's why I added an Express backend that adds the key and calls the API on the user's behalf.
+
+**Q: Why should you never commit `terraform.tfstate`?**
+A: State can contain resource attributes, including secrets, in plain text. Committed state also goes stale and conflicts when two people apply changes. Teams store state in a remote backend such as a GCS bucket, which supports locking.
+
+**Q: You accidentally committed an API key. Is deleting it in a new commit enough?**
+A: No. It's still in git history and may already be cloned or scanned by bots. First revoke and rotate the key. Then rewrite history with `git filter-repo` or BFG if needed, and add protections such as `.gitignore` rules and secret scanning.
+
+**Q: Tell me about a security issue you caught in this project.** *(real story)*
+A: The app I started from read the API key from a `VITE_` variable, which exposed it in the browser bundle, and its `.gitignore` didn't ignore `.env`. Before the first commit I rewrote the `.gitignore`, verified with `git check-ignore`, scanned staged content for the key value, and rotated the key. Later I moved the API call to the backend.
+
+**Q: Why do you commit `package-lock.json` and `.terraform.lock.hcl`?**
+A: Lock files pin exact dependency versions, so every machine and the CI pipeline install the same thing. That makes builds reproducible and avoids "works on my machine" problems.
+
+**Q: What is `.gitattributes` used for in your repo?**
+A: It forces LF line endings. I develop on Windows, which uses CRLF, but the code runs in Linux containers and on Linux CI runners. Consistent line endings prevent noisy diffs and broken scripts.
+
+---
+
+## Docker
+
+**Q: How does Docker run on Windows?**
+A: Containers share the host's Linux kernel, and Windows doesn't have one. Docker Desktop runs a real Linux kernel through WSL 2, a lightweight VM, and the containers run there. It needs CPU virtualization enabled.
+
+**Q: Explain Docker's architecture.**
+A: It's client-server. The `docker` CLI sends requests to the Docker daemon. The daemon pulls images from a registry, creates containers from them and manages their lifecycle. "Error response from daemon" means the CLI is fine but the daemon has a problem.
+
+**Q: Describe a setup problem you debugged.** *(real story)*
+A: `docker run` failed with "Docker Desktop is unable to start". I checked Docker's backend logs and found it had started before WSL was installed, cached the "WSL not installed" error and never retried. After confirming WSL 2 was running with `wsl --list --verbose`, I fully restarted Docker Desktop and verified with `docker run hello-world`.
+
+---
+
+## Node.js and Express
+
+**Q: Why did you split the server into `app.js` and `index.js`?**
+A: `app.js` builds the Express app and exports it without listening on a port. `index.js` starts it. Tests can import the app and send requests through supertest without opening a real port, which keeps tests fast and avoids port conflicts.
+
+**Q: Why does the app read `process.env.PORT`?**
+A: Cloud Run decides which port the container must listen on and passes it in the `PORT` environment variable. Hardcoding a port would break that contract. 8080 is only the local fallback.
+
+**Q: What should a health check endpoint do?**
+A: Return 200 quickly if the service itself is alive. It should not depend on external APIs. Otherwise an OpenWeatherMap outage would make Cloud Run or the monitoring think our app is down and trigger false alerts.
+
+**Q: Why disable the `X-Powered-By` header?**
+A: It advertises that the app runs on Express. Hiding it gives attackers less information for targeting known framework vulnerabilities. It's a small defence-in-depth step.
+
+**Q: How do you load environment variables locally without committing secrets?**
+A: Real values live in `.env`, which is gitignored, and `.env.example` documents the variable names. Node 20+ can load the file natively with `--env-file=.env`, so I didn't need the `dotenv` package. In Cloud Run the value comes from Secret Manager instead.
+
+---
+
+## Dependencies
+
+**Q: What's the difference between `npm audit fix` and `npm audit fix --force`?**
+A: `npm audit fix` upgrades vulnerable packages only within the semver ranges in `package.json`, so it won't introduce breaking changes. `--force` allows major-version upgrades, which can break the app, so it needs careful testing. In my project the plain fix resolved all issues, and I verified the build afterwards.
+
+**Q: What does `^1.18.1` mean in `package.json`?**
+A: Caret range: any version from 1.18.1 up to, but not including, 2.0.0. Minor and patch updates are allowed, major ones aren't, because semver reserves major versions for breaking changes.
+
+**Q: What's the difference between `npm install` and `npm ci`?**
+A: `npm install` resolves versions and can update the lockfile. `npm ci` installs exactly what's in `package-lock.json`, deletes `node_modules` first and fails if the lockfile and `package.json` don't match. CI pipelines use `npm ci` for reproducible builds.
