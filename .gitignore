@@ -1,0 +1,43 @@
+# ---------- Dependencies ----------
+# Rebuilt from package-lock.json with `npm ci`, so never committed
+node_modules/
+
+# ---------- Build / test output ----------
+dist/
+dist-ssr/
+coverage/
+
+# ---------- Secrets ----------
+# Real env files hold API keys - only the template is committed
+.env
+.env.*
+!.env.example
+# Service account key files (we use Workload Identity Federation, so these should never exist)
+*-key.json
+credentials*.json
+
+# ---------- Terraform ----------
+# Provider plugins downloaded by `terraform init`
+.terraform/
+# State files can contain secrets in plain text
+*.tfstate
+*.tfstate.*
+# Real variable values (project IDs, emails) - only example files are committed
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+crash.log
+crash.*.log
+# NOTE: .terraform.lock.hcl is intentionally NOT ignored - it pins provider versions
+
+# ---------- Logs ----------
+logs/
+*.log
+
+# ---------- Editor / OS ----------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.local

@@ -1,0 +1,7 @@
+# Store all text files with LF line endings (Linux containers and CI runners expect LF)
+* text=auto eol=lf
+
+# Never modify binary files
+*.png binary
+*.jpg binary
+*.ico binary
