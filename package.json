@@ -3,7 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
+    "start": "node server/index.js",
+    "dev:server": "node --watch --env-file=.env server/index.js",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
@@ -11,6 +16,7 @@
   },
   "dependencies": {
     "axios": "^1.18.1",
+    "express": "^5.3.0",
     "lucide-react": "^1.22.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
