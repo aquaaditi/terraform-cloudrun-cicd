@@ -1,5 +1,9 @@
 import express from 'express';
+import { fileURLToPath } from 'node:url';
 import { getWeather, parseLocation } from './weather.js';
+
+// Absolute path to the React build output (created by `npm run build`)
+const distDir = fileURLToPath(new URL('../dist', import.meta.url));
 
 // Builds and returns the Express app WITHOUT starting it.
 // Tests import this directly and send requests with supertest (no real port needed).
@@ -46,6 +50,10 @@ export function createApp({ apiKey = process.env.OPENWEATHER_API_KEY } = {}) {
       return res.status(502).json({ error: 'Weather service unavailable' });
     }
   });
+
+  // Serve the built React app (index.html, JS, CSS). Registered AFTER the API routes,
+  // so /health and /api/* always reach our code first.
+  app.use(express.static(distDir));
 
   return app;
 }
