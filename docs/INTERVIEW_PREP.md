@@ -64,6 +64,27 @@ A: It advertises that the app runs on Express. Hiding it gives attackers less in
 **Q: How do you load environment variables locally without committing secrets?**
 A: Real values live in `.env`, which is gitignored, and `.env.example` documents the variable names. Node 20+ can load the file natively with `--env-file=.env`, so I didn't need the `dotenv` package. In Cloud Run the value comes from Secret Manager instead.
 
+**Q: How does your app keep the OpenWeatherMap API key out of the browser?**
+A: The browser calls my own endpoint, `/api/weather`. The Express server adds the key and calls OpenWeatherMap server-side, then returns the result. The key only exists as a server environment variable, from `.env` locally and Secret Manager on Cloud Run. I also verified that the key never appears in any response body or header.
+
+**Q: Which HTTP status codes does your API return, and why 502?**
+A: 400 for invalid input, 404 when the city isn't found, 500 when my server is misconfigured (for example the key is missing), and 502 Bad Gateway when the upstream API fails or rejects the request. 502 tells the caller that the problem is in a service behind mine, not in their request or my code.
+
+**Q: Why validate input when you're just passing it to another API?**
+A: User input ends up in a request my server sends, so it must be checked. I reject empty or overly long city names and out-of-range coordinates with a 400 before making any external call. That saves API quota, and I build the URL with `URLSearchParams` so special characters can't change the request.
+
+**Q: Why add a timeout to an outbound HTTP call?**
+A: Without one, a slow upstream API can keep requests open, tying up server resources and leaving users waiting. With `AbortSignal.timeout(5000)` the call fails fast and the user gets a clear 502. On Cloud Run that also stops a slow dependency from keeping instances busy and costing money.
+
+**Q: How do you handle errors without leaking sensitive information?**
+A: Users get a short generic message. Details like the upstream status code go to the server logs for me, but I never log the request URL, because it contains the API key. Logs are widely accessible, so they must never contain secrets.
+
+**Q: What is dependency injection, and where did you use it?**
+A: Passing a component what it needs instead of letting it fetch things itself. My `createApp` function accepts the API key as an option and defaults to the environment variable, so tests can inject a fake key without touching real environment variables or real secrets.
+
+**Q: What is `.env.example` for?**
+A: `.env` holds real secrets and is gitignored, so `.env.example` is a committed template listing the required variable names with placeholder values. It documents the configuration for new developers. A `!.env.example` exception in `.gitignore` keeps it tracked.
+
 ---
 
 ## Dependencies

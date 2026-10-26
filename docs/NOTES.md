@@ -83,3 +83,32 @@ npm audit checks my packages for known security problems. npm audit fix updates 
 Version numbers have three parts: major, minor and patch. A major change can break things. The ^ symbol in package.json means "allow minor and patch updates, but not major".
 
 My problem: the old project's packages had high security problems in axios, vite and postcss. I ran npm audit fix, checked that the app still builds, and committed it separately.
+
+### The weather route (backend proxy)
+My browser now asks my own server for the weather at /api/weather. My server adds the secret API key and calls OpenWeatherMap, then sends the answer back. The browser never sees the key. A server that calls another service for you like this is called a proxy.
+
+The route accepts either a city name or a latitude and longitude. The latitude and longitude come from the "Current Location" button.
+
+### Checking user input
+I never trust what the user sends, because it goes into a request to another server. If the city is empty or too long, or the latitude and longitude are not real numbers in the correct range, I return error 400 straight away without calling OpenWeatherMap.
+
+I build the URL with URLSearchParams. It safely encodes special characters like spaces and the & sign, so a user cannot break or change my request.
+
+### HTTP status codes I use
+200 means success. 400 means the user sent bad input. 404 means the city was not found. 500 means my own server has a problem, like the API key missing. 502 means the service behind my server failed, like OpenWeatherMap being down or rejecting my key.
+
+### Timeouts
+If OpenWeatherMap is slow, my server should not wait forever. I set a 5 second timeout, so the request gives up and the user gets a 502 error instead of a page that never loads.
+
+### Safe logging
+When something fails, I write a short message to the log for myself, but the user only sees a simple error. I never log the request URL, because it contains the API key. Logs are often read by many people and tools, so secrets must never go into them.
+
+### Dependency injection
+createApp takes the API key as an option. Normally it reads the key from the environment, but my tests can pass a fake key. Giving a function what it needs from outside, instead of it fetching things itself, is called dependency injection. It makes code easy to test.
+
+### .env.example
+.env is ignored by Git, so other people would not know which variables my app needs. .env.example is a template with the same names but fake values, and it is committed. A new developer copies it to .env and puts in their own key.
+
+The .gitignore line !.env.example makes this one file an exception, so Git saves it even though all other .env files are ignored. I checked this with git check-ignore.
+
+My win: the new API key became active, and my server returned real weather for Delhi without the key ever reaching the browser.
