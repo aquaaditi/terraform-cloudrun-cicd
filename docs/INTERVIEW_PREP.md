@@ -85,6 +85,21 @@ A: Passing a component what it needs instead of letting it fetch things itself. 
 **Q: What is `.env.example` for?**
 A: `.env` holds real secrets and is gitignored, so `.env.example` is a committed template listing the required variable names with placeholder values. It documents the configuration for new developers. A `!.env.example` exception in `.gitignore` keeps it tracked.
 
+**Q: Why does Express serve the React build instead of hosting the frontend separately?**
+A: One container serves both the static frontend and the API on the same origin. That means one service to build, deploy and monitor, and no CORS configuration, because the browser calls the same host it loaded the page from. For a small app it's simpler and cheaper. At larger scale I'd consider putting static files on Cloud Storage with a CDN.
+
+**Q: Why are the API routes registered before `express.static`?**
+A: Express matches middleware and routes in the order they're registered. With the API routes first, `/health` and `/api/*` always reach my handlers, and the static middleware only handles everything else.
+
+**Q: What is CORS?**
+A: Cross-Origin Resource Sharing is a browser security rule. A page from one origin (scheme, host and port) can't read responses from an API on another origin unless that API sends headers allowing it. Serving the frontend and API from the same origin avoids the problem entirely.
+
+**Q: How does local development work with a separate frontend dev server?**
+A: Vite runs on port 5173 with hot reload, and Express runs on 8080. Vite's dev proxy forwards any `/api` request to Express. The frontend always uses relative `/api` URLs, so the same code works locally through the proxy and in production, where Express serves everything.
+
+**Q: Why do Vite's build files have hashes in their names?**
+A: The hash is based on the file's content, so a code change produces a new file name. Browsers can cache these files for a long time, and users still get the new version immediately after a deploy. This is called cache busting.
+
 ---
 
 ## Dependencies

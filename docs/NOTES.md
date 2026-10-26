@@ -112,3 +112,21 @@ createApp takes the API key as an option. Normally it reads the key from the env
 The .gitignore line !.env.example makes this one file an exception, so Git saves it even though all other .env files are ignored. I checked this with git check-ignore.
 
 My win: the new API key became active, and my server returned real weather for Delhi without the key ever reaching the browser.
+
+### One server for the website and the API
+When I run npm run build, Vite creates a dist folder with the finished website files. My Express server now sends these files to the browser using express.static. So one server on port 8080 gives both the website and the API.
+
+This is good because I only need to deploy one container. Also the website and the API have the same address, so I do not get CORS errors. CORS is a browser rule that blocks a page from calling an API on a different address unless that API allows it.
+
+I put the API routes before express.static. Express checks routes in order, so /health and /api always reach my code first.
+
+### Finding the dist folder
+In modern JavaScript modules, the old __dirname variable does not exist. I use import.meta.url, which is the location of the current file, and go one folder up to find dist. This works no matter which folder I start the server from, which matters inside Docker.
+
+### Why file names have random letters
+Vite names files like index-CJJ-eVp2.js. The letters are a hash of the file content. When I change the code, the name changes, so the browser downloads the new file instead of using an old saved copy. This is called cache busting.
+
+### Vite dev proxy
+When I work on the frontend, I run Vite on port 5173 because it reloads the page instantly when I save. But my API runs on Express on port 8080. I told Vite to forward every request starting with /api to port 8080. This is called a proxy.
+
+Because of this, my frontend code can always call /api/weather. It works on my laptop through the proxy and in production through the same server. The proxy is only for my laptop and is not part of the real website.
