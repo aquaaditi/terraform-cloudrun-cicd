@@ -1,108 +1,85 @@
 # Study Notes
 
-Topic-wise notes from building this project, organised by day.
-For interview questions, see [INTERVIEW_PREP.md](INTERVIEW_PREP.md). For the daily log, see [DEVLOG.md](../DEVLOG.md).
+My simple notes from building this project, day by day and topic by topic.
 
 ---
 
 ## Day 1: Setup and Git
 
-### Git basics used
-| Command | What it does |
-|---|---|
-| `git init -b main` | Create a new repo with `main` as the default branch |
-| `git status` | Show staged, modified and untracked files. Run it before every commit |
-| `git add <file>` | Stage a file (put it in the next commit) |
-| `git commit -m "..."` | Save staged changes as a snapshot |
-| `git log --oneline` | Show commit history, one line each |
-| `git remote add origin <url>` | Link the local repo to GitHub under the name `origin` |
-| `git push -u origin main` | Upload `main`; `-u` sets tracking so later just `git push` works |
-| `git check-ignore -v <file>` | Show which `.gitignore` rule ignores a file |
+### What is Git?
+Git is a tool that saves snapshots of my project. Each snapshot is called a commit. If something breaks, I can go back to an older snapshot. GitHub is a website that stores a copy of my Git project online.
 
-- `## main...origin/main [ahead 2]` means 2 local commits are not yet pushed.
-- `nothing to commit, working tree clean` means everything is committed.
+### How I save my work in Git
+First I check what changed using git status. Then I choose which files to save using git add. This is called staging. Then I save them with git commit and a short message. Finally I upload my commits to GitHub using git push.
 
-### .gitignore
-- Lists files git must never track: dependencies (`node_modules/`), build output (`dist/`), **secrets** (`.env`), Terraform state.
-- `!pattern` is an exception, e.g. `.env.*` ignores all env files but `!.env.example` keeps the template.
-- Gotcha: the original Vite `.gitignore` did **not** ignore `.env`, so `git add .` would have leaked the API key.
-- `.terraform.lock.hcl` is deliberately **committed**: it pins provider versions like `package-lock.json` does.
+If git status says "working tree clean", it means everything is already saved. If it says "ahead 2", it means I have 2 commits on my laptop that are not on GitHub yet, so I need to push.
 
-### .gitattributes
-- `* text=auto eol=lf` stores text files with Linux line endings (LF).
-- Windows uses CRLF; Linux containers and CI runners expect LF. Mismatches cause noisy diffs and broken shell scripts.
+### What is .gitignore?
+It is a file that tells Git which files it must never save. I ignore node_modules because it is very big and can be downloaded again. I ignore .env because it has my secret API key. I also ignore Terraform state files because they can contain secrets.
 
-### Conventional Commits
-Format: `type: short description`
-- `feat:` new feature · `fix:` bug fix · `docs:` documentation · `test:` tests
-- `chore:` maintenance · `ci:` pipeline changes · `infra:` infrastructure (Terraform)
-- One commit = one logical change you can explain in one sentence.
+A line starting with ! means "do not ignore this one". I use it so that .env.example is still saved, because it is only a template without real secrets.
 
-### Why `VITE_` env vars are not secret
-- Vite **copies** every `VITE_*` variable into the JavaScript bundle at build time.
-- Anyone can see it in browser DevTools → Network tab.
-- Fix: call the third-party API from a **backend**, which keeps the key on the server.
-- A leaked key must be **rotated** (new key + delete old one). Deleting it from code is not enough.
+The old project's .gitignore did not ignore .env. If I had committed, my API key would have gone to GitHub. I fixed this before the first commit.
 
-### Docker on Windows: WSL 2
-- Containers need a **Linux kernel**. Windows doesn't have one.
-- **WSL 2** (Windows Subsystem for Linux) runs a real Linux kernel in a lightweight VM.
-- Docker Desktop runs its engine inside WSL 2.
-- Requires CPU virtualization (Intel VT-x) enabled in BIOS.
-- Gotcha: Docker Desktop started before WSL was installed and kept the old error. A full restart of Docker Desktop fixed it.
+### What is .gitattributes?
+Windows and Linux end each line of a file in a different way. Windows uses CRLF and Linux uses LF. My code will run on Linux (Docker and GitHub Actions), so this file tells Git to always store files with LF. This avoids strange errors and fake changes.
 
-### Docker client-server architecture
-1. `docker` CLI (client) sends commands to the **daemon** (engine).
-2. Daemon **pulls images** from a **registry** (Docker Hub, Artifact Registry).
-3. Daemon **creates and runs containers** from images.
-4. Output streams back to the client.
-- `Error response from daemon` means the CLI works but the daemon has a problem.
+### Commit messages
+I write commit messages in a fixed style called Conventional Commits. The message starts with a word that tells the type of change. feat means a new feature. fix means a bug fix. docs means documentation. test means tests. chore means small maintenance work. ci means pipeline changes. infra means Terraform or cloud changes. Each commit should be one small change that I can explain in one sentence.
 
-### PATH (Windows)
-- PATH is the list of folders Windows searches when you type a command.
-- After installing a tool, open a **new** terminal. VS Code terminals inherit PATH from VS Code, so **restart VS Code**.
-- Gotcha: `terraform` was installed but "not recognized" until VS Code restarted.
+### Why my API key was not safe in the old app
+The old app was built with Vite. Vite takes any variable that starts with VITE_ and puts it inside the JavaScript file that goes to the browser. So anyone could open the browser tools and see my key.
+
+The fix is to call the weather API from my own server (backend). The server keeps the key secret and the browser never sees it. Because the old key was already exposed, I made a new key and deleted the old one. This is called rotating a key.
+
+### Why Docker needs WSL on Windows
+Containers need Linux to run, but Windows is not Linux. WSL 2 runs a small real Linux inside Windows. Docker Desktop uses WSL 2 to run my containers. For WSL to work, virtualization must be turned on in the computer's BIOS.
+
+My problem: Docker showed "unable to start". It had started before WSL was installed, and it remembered that error. When I fully restarted Docker Desktop, it found WSL and worked.
+
+### How Docker works
+Docker has two parts. The docker command I type is the client. The daemon is the engine running in the background. The client sends my command to the daemon. The daemon downloads images from a registry like Docker Hub, then creates and runs containers from them.
+
+If I see "Error response from daemon", the command is fine but the engine has a problem.
+
+### What is PATH?
+PATH is a list of folders where Windows looks for commands. After I install a new tool, I must open a new terminal so Windows sees it. In VS Code I must restart the whole VS Code, not just the terminal.
+
+My problem: terraform was installed but showed "not recognized". Restarting VS Code fixed it.
 
 ---
 
 ## Day 2: Express backend
 
-### Express basics
-- Express maps **routes** (method + URL) to handler functions: `app.get('/health', (req, res) => ...)`.
-- `req` = incoming request, `res` = response we send back.
-- `res.status(200).json({...})` sets the HTTP status and sends JSON.
-- Express 5 automatically catches errors thrown in `async` handlers (Express 4 didn't).
-- Unknown routes return **404** by default.
+### What is Express?
+Express is a tool for building a web server in Node.js. I tell it which function should run for which URL. This is called a route. For example, when someone opens /health, my function sends back "ok".
 
-### app.js vs index.js pattern
-- `app.js` **builds** the app (routes, middleware) and exports it. It does not listen on a port.
-- `index.js` **starts** the server with `app.listen(port)`.
-- Why: tests import `app.js` directly and send fake requests (supertest) without a real port.
+Express 5 is the newest version. One good thing is that it catches errors in async functions automatically. If someone opens a URL that does not exist, Express sends a 404 error by itself.
 
-### PORT and Cloud Run
-- Cloud Run injects a `PORT` environment variable (default 8080). The app **must** listen on it.
-- `Number(process.env.PORT) || 8080` uses PORT if set, otherwise falls back to 8080 locally.
+### Why I have two files: app.js and index.js
+app.js builds the server and its routes but does not start it. index.js actually starts the server on a port.
 
-### Health checks
-- `/health` returns 200 if the process is alive. Used by Cloud Run and uptime monitoring.
-- Keep it fast and **independent of external APIs**, otherwise an OpenWeatherMap outage would look like our outage.
+I split them so my tests can use app.js directly without starting a real server. This makes tests faster and avoids port problems.
 
-### Small security habits
-- `app.disable('x-powered-by')` hides the `X-Powered-By: Express` header (less info for attackers).
+### What is PORT?
+Cloud Run tells my app which port to use through a variable called PORT. My app must listen on that port, otherwise Cloud Run cannot reach it. If PORT is not given, like on my laptop, the app uses 8080.
 
-### npm scripts and Node features
-| Script | Command | Used by |
-|---|---|---|
-| `npm start` | `node server/index.js` | Docker / Cloud Run |
-| `npm run dev:server` | `node --watch --env-file=.env server/index.js` | Local development |
-- `--watch` restarts the server when files change (built into Node, no nodemon needed).
-- `--env-file=.env` loads `.env` (built into Node 20.6+, no `dotenv` package needed).
-- `"engines": { "node": ">=20" }` documents the required Node version.
+### What is a health check?
+/health is a simple URL that returns 200 if my app is running. Cloud Run and the monitoring use it to check if my app is alive.
 
-### npm audit and semver
-- `npm audit` lists known vulnerabilities in installed packages.
-- `npm audit fix` upgrades **within semver ranges** only, so it's safe.
-- `npm audit fix --force` allows **major** upgrades, which can break things.
-- Semver `MAJOR.MINOR.PATCH`: `^1.18.1` allows `1.x.x` ≥ 1.18.1 but not `2.0.0`.
-- Always re-run the build/tests after fixing dependencies.
-- Gotcha: the copied old lockfile had high-severity issues (axios, vite, postcss). Fixed in a separate `fix(deps):` commit.
+It must be fast and must not call any outside API. If it called the weather API and the weather API was down, it would look like my app is down, which is wrong.
+
+### Hiding the X-Powered-By header
+By default Express tells everyone "I am Express" in a header. I turned this off so attackers get less information about my app.
+
+### npm scripts
+npm scripts are short names for long commands. npm start runs my server the normal way, and Docker and Cloud Run will use this. npm run dev:server is for my laptop. It restarts the server when I save a file, and it loads my .env file.
+
+Node 20 can load .env files by itself, so I did not need the dotenv package. The engines setting in package.json says my app needs Node 20 or newer.
+
+### npm audit
+npm audit checks my packages for known security problems. npm audit fix updates them safely, without big breaking changes. Adding --force allows big updates that can break the app, so I avoid it unless needed.
+
+Version numbers have three parts: major, minor and patch. A major change can break things. The ^ symbol in package.json means "allow minor and patch updates, but not major".
+
+My problem: the old project's packages had high security problems in axios, vite and postcss. I ran npm audit fix, checked that the app still builds, and committed it separately.
