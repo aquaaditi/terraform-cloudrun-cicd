@@ -1,5 +1,4 @@
 import { useState } from "react";
-import axios from "axios";
 import "./App.css";
 import {
   Search,
@@ -9,6 +8,18 @@ import {
   Gauge,
   LocateFixed,
 } from "lucide-react";
+
+// Calls OUR backend, which adds the secret API key on the server.
+// The browser never sees the key or talks to OpenWeatherMap directly.
+async function fetchWeather(params) {
+  const response = await fetch(`/api/weather?${new URLSearchParams(params)}`);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    // Show the backend's message, e.g. "City not found"
+    throw new Error(data.error || "Something went wrong");
+  }
+  return data;
+}
 
 function App() {
   const [city, setCity] = useState("");
@@ -23,15 +34,9 @@ function App() {
     setError("");
 
     try {
-      const apiKey = import.meta.env.VITE_WEATHER_API_KEY;
-
-      const response = await axios.get(
-        `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`
-      );
-
-      setWeather(response.data);
+      setWeather(await fetchWeather({ city }));
     } catch (err) {
-      setError("City not found");
+      setError(err.message);
       setWeather(null);
     }
 
@@ -49,16 +54,9 @@ function App() {
       setError("");
 
       try {
-        const apiKey = import.meta.env.VITE_WEATHER_API_KEY;
-
         const { latitude, longitude } = position.coords;
-
-        const response = await axios.get(
-          `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric`
-        );
-
-        setWeather(response.data);
-      } catch (err) {
+        setWeather(await fetchWeather({ lat: latitude, lon: longitude }));
+      } catch {
         setError("Unable to fetch location weather.");
       }
 
