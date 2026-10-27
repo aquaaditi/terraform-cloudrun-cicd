@@ -168,7 +168,8 @@ function App() {
   <div className="detail-box">
     <Wind size={30} />
     <span>Wind</span>
-    <h3>{weather.wind.speed} km/h</h3>
+    {/* OpenWeatherMap returns m/s in metric units; 1 m/s = 3.6 km/h */}
+    <h3>{Math.round(weather.wind.speed * 3.6)} km/h</h3>
   </div>
 
   <div className="detail-box">
