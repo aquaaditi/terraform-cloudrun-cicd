@@ -100,6 +100,25 @@ A: Vite runs on port 5173 with hot reload, and Express runs on 8080. Vite's dev 
 **Q: Why do Vite's build files have hashes in their names?**
 A: The hash is based on the file's content, so a code change produces a new file name. Browsers can cache these files for a long time, and users still get the new version immediately after a deploy. This is called cache busting.
 
+**Q: How did you verify that the API key no longer reaches the browser?**
+A: I removed every reference to the key from the frontend and switched it to call `/api/weather`. Then I built the production bundle and searched `dist/` for the actual key value and for the OpenWeatherMap hostname, and found neither. Checking the build output, not just the source, proves what users actually download.
+
+**Q: Tell me about a bug you found in this project.** *(real story)*
+A: The original app labelled wind speed as km/h, but OpenWeatherMap returns metres per second when you request metric units, so values were 3.6 times too low. I confirmed it in the API docs, converted with `speed * 3.6`, and committed it as a separate `fix:` commit so the change is easy to review and revert.
+
+**Q: Why did you remove axios?**
+A: After moving the API call to the backend, the frontend only needed one simple GET request, which the built-in `fetch` handles. Removing axios cut the bundle by about 20% and removed a dependency that had just needed a security patch. Every dependency adds attack surface and maintenance, so unused ones should go.
+
+---
+
+## Docker basics
+
+**Q: What's the difference between an image and a container?**
+A: An image is a read-only template: the app, its dependencies and the start command. A container is a running instance created from an image. One image can run as many containers. It's like a class and its objects.
+
+**Q: Why might `docker ps` show nothing even though you ran a container?**
+A: `docker ps` only lists running containers. A container stops when its main process exits. `hello-world` prints a message and exits with code 0, so it appears only in `docker ps -a`, as `Exited (0)`. A web server container keeps running because its process keeps listening.
+
 ---
 
 ## Dependencies

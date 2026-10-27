@@ -130,3 +130,22 @@ Vite names files like index-CJJ-eVp2.js. The letters are a hash of the file cont
 When I work on the frontend, I run Vite on port 5173 because it reloads the page instantly when I save. But my API runs on Express on port 8080. I told Vite to forward every request starting with /api to port 8080. This is called a proxy.
 
 Because of this, my frontend code can always call /api/weather. It works on my laptop through the proxy and in production through the same server. The proxy is only for my laptop and is not part of the real website.
+
+### Frontend now calls my backend
+I changed App.jsx so it no longer calls OpenWeatherMap and no longer reads any API key. It now calls my own /api/weather using a small helper function called fetchWeather. If my server sends an error like "City not found", the helper shows that message on the screen.
+
+To prove the key is gone, I built the website and searched the finished files in dist for the key and for the OpenWeatherMap address. Neither was found. The old security problem is fully fixed.
+
+### Removing axios
+axios is a package for making web requests. Browsers already have fetch built in, which is enough for my simple needs. So I removed axios. The website file became about 20 percent smaller, and there is one less package that can have security problems. An unused package is only risk with no benefit.
+
+### The wind speed bug
+The old app showed wind speed with "km/h", but OpenWeatherMap sends it in metres per second when I ask for metric units. So the app showed numbers 3.6 times too small. I fixed it by multiplying by 3.6. I found this bug by reading the code carefully and checking the API documentation.
+
+### Wait until a service is ready
+My test script once asked for the page before the server had fully started and got no answer, shown as HTTP 000. When I waited for /health to answer first, everything worked. Real systems do the same thing: Cloud Run waits for the app to be ready before sending it users.
+
+### Containers and Docker commands
+docker ps shows only running containers. docker ps -a shows all containers, including stopped ones. docker images shows the images I have.
+
+An image is like a recipe, and a container is a running copy made from that recipe. A container only lives as long as its main program runs. hello-world prints a message and stops, so its container shows "Exited (0)", and 0 means it finished successfully. My Express server keeps running, so its container will stay up.
