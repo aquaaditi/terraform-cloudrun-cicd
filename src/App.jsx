@@ -79,6 +79,8 @@ function App() {
 
   <input
     type="text"
+    name="city"
+    aria-label="City name"
     placeholder="Enter city name..."
     value={city}
     onChange={(e) => setCity(e.target.value)}
