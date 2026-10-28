@@ -16,10 +16,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "express": "^5.3.0",
-    "lucide-react": "^1.22.0",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "express": "^5.3.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -31,6 +28,9 @@
     "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^17.6.0",
     "jest": "^30.5.2",
+    "lucide-react": "^1.63.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "supertest": "^7.3.1",
     "vite": "^8.1.0"
   }
