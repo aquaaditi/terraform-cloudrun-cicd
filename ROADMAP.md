@@ -53,6 +53,7 @@ Each day is roughly 2–3 hours and ends with small, Conventional Commits pushed
 | 1 | 0. Setup | Inspect app, install tools, git + `.gitignore`, first push | ✅ Done |
 | 2 | 1. Backend | Express server: `/health`, `/api/weather` proxy, serve React build, `.env.example` | ✅ Done |
 | 3 | 1. Tests | Jest + supertest tests with mocked API, ESLint for Node | ✅ Done |
+| 3+ | Extra | `/api/forecast` route, UI redesign (themes, details, 5-day forecast) | ✅ Done |
 | 4 | 2. Docker | Multi-stage Dockerfile (node:20-alpine), non-root user, `.dockerignore` | ⬜ |
 | 5 | 3. Terraform I | Budget alert, remote state, provider, variables, APIs, Artifact Registry | ⬜ |
 | 6 | 3. Terraform II | Least-privilege service accounts, Secret Manager, Cloud Run | ⬜ |
