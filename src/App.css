@@ -323,6 +323,77 @@ input {
   font-weight: 600;
 }
 
+/* ---------- 5-day forecast ---------- */
+.forecast-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.85;
+}
+
+.forecast ul {
+  list-style: none;
+}
+
+.forecast-row {
+  display: grid;
+  grid-template-columns: 4.5rem 2.5rem 3rem 1fr 3rem; /* day | icon | min | bar | max */
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.forecast-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.forecast-day,
+.forecast-max {
+  font-weight: 600;
+}
+
+.forecast-icon {
+  display: flex;
+}
+
+.forecast-min {
+  text-align: right;
+  opacity: 0.7;
+}
+
+.forecast-bar {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.forecast-bar span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #8ecae6, #ffb703, #fb8500); /* cool to warm */
+}
+
+/* Hidden on screen but read by screen readers */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* ---------- Footer ---------- */
 .footer {
   padding: 16px;
@@ -351,6 +422,11 @@ input {
 
   .details {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .forecast-row {
+    grid-template-columns: 3.5rem 2rem 2.5rem 1fr 2.5rem;
+    gap: 8px;
   }
 }
 

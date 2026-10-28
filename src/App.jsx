@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { CloudOff, CloudSun, LoaderCircle, LocateFixed, Search } from "lucide-react";
 import CurrentWeather from "./components/CurrentWeather";
+import Forecast from "./components/Forecast";
 import WeatherDetails from "./components/WeatherDetails";
-import { getTheme } from "./utils/weather";
+import { cityDate, getTheme } from "./utils/weather";
 import "./App.css";
 
 const POPULAR_CITIES = ["New Delhi", "Mumbai", "London", "Tokyo", "New York"];
@@ -32,6 +33,7 @@ function loadUnit() {
 function App() {
   const [city, setCity] = useState("");
   const [weather, setWeather] = useState(null);
+  const [forecast, setForecast] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [unit, setUnit] = useState(loadUnit);
@@ -41,10 +43,20 @@ function App() {
     setLoading(true);
     setError("");
     try {
-      setWeather(await fetchApi("/api/weather", params));
+      // Fetch both at the same time. allSettled (not all) means a forecast failure
+      // doesn't hide the current weather - the forecast section is simply skipped.
+      const [current, upcoming] = await Promise.allSettled([
+        fetchApi("/api/weather", params),
+        fetchApi("/api/forecast", params),
+      ]);
+      if (current.status === "rejected") throw current.reason;
+
+      setWeather(current.value);
+      setForecast(upcoming.status === "fulfilled" ? upcoming.value.days : null);
     } catch (err) {
       setError(err.message);
       setWeather(null);
+      setForecast(null);
     } finally {
       setLoading(false); // always stop the spinner, even after an error
     }
@@ -165,6 +177,13 @@ function App() {
         {!loading && weather && (
           <>
             <CurrentWeather weather={weather} unit={unit} />
+            {forecast?.length > 0 && (
+              <Forecast
+                days={forecast}
+                today={cityDate(weather.dt, weather.timezone)}
+                unit={unit}
+              />
+            )}
             <WeatherDetails weather={weather} unit={unit} />
           </>
         )}
