@@ -1,6 +1,6 @@
 import express from 'express';
 import { fileURLToPath } from 'node:url';
-import { getWeather, parseLocation } from './weather.js';
+import { getForecast, getWeather, parseLocation } from './weather.js';
 
 // Absolute path to the React build output (created by `npm run build`)
 const distDir = fileURLToPath(new URL('../dist', import.meta.url));
@@ -57,6 +57,9 @@ export function createApp({ apiKey = process.env.OPENWEATHER_API_KEY } = {}) {
 
   // Weather proxy: the browser calls us, we call OpenWeatherMap with the secret key
   app.get('/api/weather', openWeatherHandler(apiKey, getWeather));
+
+  // 5-day forecast, summarised per day on the server (same validation and error handling)
+  app.get('/api/forecast', openWeatherHandler(apiKey, getForecast));
 
   // Serve the built React app (index.html, JS, CSS). Registered AFTER the API routes,
   // so /health and /api/* always reach our code first.
