@@ -1,0 +1,29 @@
+# Files Docker should NOT send to the build (the "build context").
+# Smaller context = faster builds, and secrets can never end up inside an image.
+
+# ---------- Secrets: must never be inside an image ----------
+.env
+.env.*
+*-key.json
+credentials*.json
+
+# ---------- Rebuilt inside the image ----------
+# The image runs its own clean `npm ci` (and Windows binaries would break on Linux)
+node_modules
+dist
+coverage
+
+# ---------- Not needed to build or run the app ----------
+.git
+.gitignore
+.gitattributes
+.github
+.vscode
+.idea
+terraform
+tests
+docs
+*.md
+*.log
+Dockerfile
+.dockerignore
