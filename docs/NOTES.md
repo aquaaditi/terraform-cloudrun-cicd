@@ -192,3 +192,45 @@ npm ci is like npm install, but stricter. It deletes node_modules and installs e
 
 ### Deciding about security warnings
 After installing Jest, npm audit showed 5 low warnings in a package used inside Jest. The suggested fix would downgrade Jest to a very old version, which is worse. The problem only affects development tools, not my live app, and the production audit shows zero problems. So I accepted this small risk. Not every warning needs a forced fix. I look at how serious it is, where the code runs, and what the fix would break.
+
+---
+
+## Day 3 (extra): Forecast and new design
+
+### Refactoring
+Refactoring means changing how code is organised without changing what it does. Before adding the forecast, I moved the shared error handling into one function called openWeatherHandler. My 14 tests still passed, which proved the behaviour did not change. Tests make refactoring safe.
+
+### DRY: Don't Repeat Yourself
+Both /api/weather and /api/forecast need the same input checks and error handling. Instead of copying 25 lines, both routes use the same handler. Now the new route is only one line, and if I fix a bug in the handler, both routes get the fix.
+
+### Summarising the forecast on the server
+OpenWeatherMap's free forecast gives 40 entries, one every 3 hours. My server groups them into 5 days, keeping the lowest and highest temperature and the weather closest to midday. The browser now downloads about 0.5 KB instead of 16.5 KB, which is about 32 times smaller.
+
+### The timezone problem
+OpenWeatherMap gives times in UTC. 8 PM in UTC is already 1:30 AM the next day in India. If I ignore the city's timezone, late entries go on the wrong day. So I add the city's timezone offset before deciding the date. I wrote a test for exactly this, and when I broke the code on purpose, only that test failed.
+
+### Unit tests and route tests
+A unit test checks one small function directly, like summarizeForecast, with hand-made data. A route test sends a full request through Express. Pure functions, which only take input and return output, are the easiest to unit test.
+
+### React components
+I split the page into small components. WeatherIcon picks the icon. CurrentWeather shows the big card. WeatherDetails shows the six tiles. Forecast shows the five days. App holds the data and decides what to show. Each file has one job, so it is easy to read and change.
+
+Props are the inputs I pass to a component. State is data that can change, like the search text or the weather. When state changes, React redraws the page.
+
+### Helper functions
+I put formatting logic like Celsius to Fahrenheit, wind direction and local time in a separate helpers file and tested them. Times like sunrise must show the city's local time, not my laptop's time, so the helper shifts by the city's timezone.
+
+### Themes with CSS variables
+The background changes with the weather and with day or night. The icon code from OpenWeatherMap ends with d for day or n for night. Each theme only changes one CSS variable called --sky, so adding a new theme is just one line.
+
+### Loading both at once and staying safe
+The app asks for the current weather and the forecast at the same time, which is faster. I used Promise.allSettled instead of Promise.all. With allSettled, if only the forecast fails, the current weather still shows. This is called graceful degradation.
+
+### Accessibility
+I made the app usable for everyone. The search is a real form, so Enter works. Buttons with only an icon have a label for screen readers. Keyboard users see a clear outline. Text hidden with sr-only is read by screen readers but not shown. The app respects the "reduce motion" setting.
+
+### Checking the design with a real browser
+Passing tests do not prove the page looks right. I used Microsoft Edge in headless mode, which is a browser without a window, controlled by a script. It clicked a city, switched to °F, resized to phone size and saved screenshots. It also reported zero JavaScript errors. This is how tools like Playwright do automated UI testing.
+
+### Removing unused files
+Before deleting the old Vite files, I searched the project to prove nothing used them. I used git rm, which deletes the files and stages the deletion together.

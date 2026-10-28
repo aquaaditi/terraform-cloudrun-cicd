@@ -146,6 +146,28 @@ A: I read the report. There were 5 low-severity issues in `deepmerge`, used only
 
 ---
 
+## Forecast feature and frontend
+
+**Q: How did you add a new API route without duplicating code?**
+A: I first refactored the existing route: validation, the missing-key check and error mapping moved into a shared `openWeatherHandler`, and the HTTP call into `callOpenWeather(endpoint)`. The 14 existing tests passed unchanged, which proved the refactor was safe. The new `/api/forecast` route then became one line that reuses the handler, so both routes behave consistently and a fix in one place fixes both.
+
+**Q: Why summarise the forecast on the server instead of in the browser?**
+A: OpenWeatherMap returns 40 three-hour entries, about 16.5 KB. The browser only needs 5 daily summaries, about 0.5 KB, so doing it server-side cuts the payload around 32 times, which matters on mobile. The logic also lives in one place, where I can unit-test it.
+
+**Q: Tell me about a tricky bug your tests protect against.** *(real story)*
+A: Timezones. The forecast API returns times in UTC, but days should follow the city's calendar. 20:00 UTC is 01:30 the next day in India, so ignoring the offset puts entries on the wrong day. I shift each timestamp by the city's offset before grouping, and wrote a test with the same entry in London and in India. When I removed the offset on purpose, exactly that test failed.
+
+**Q: What's the difference between `Promise.all` and `Promise.allSettled`, and why did you use the second?**
+A: `Promise.all` rejects as soon as one promise fails. `allSettled` waits for all of them and reports each result. The app fetches current weather and the forecast in parallel, and with `allSettled` a forecast failure only hides the forecast section while the current weather still shows. That's graceful degradation.
+
+**Q: How did you verify the UI, not just the code?**
+A: Besides lint, unit tests and a production build, I drove headless Microsoft Edge with a small Chrome DevTools Protocol script. It clicked a city, toggled °F, resized to phone width, submitted an invalid city, saved screenshots and collected JavaScript errors (there were none). It's the same approach Playwright and Puppeteer use.
+
+**Q: What accessibility improvements did you make?**
+A: A semantic `<form role="search">`, so Enter submits. `aria-label`s on icon-only buttons. `aria-pressed` on the °C/°F toggle. `role="alert"` for errors and `role="status"` for loading. Visible `:focus-visible` outlines. Visually hidden `sr-only` text for forecast conditions. And `prefers-reduced-motion` support.
+
+---
+
 ## Dependencies
 
 **Q: What's the difference between `npm audit fix` and `npm audit fix --force`?**
