@@ -5,6 +5,41 @@ import { getWeather, parseLocation } from './weather.js';
 // Absolute path to the React build output (created by `npm run build`)
 const distDir = fileURLToPath(new URL('../dist', import.meta.url));
 
+// Shared route handler for anything that proxies OpenWeatherMap.
+// It validates input, checks the key is configured and maps upstream errors.
+// fetchData is the function that actually calls OpenWeatherMap (e.g. getWeather).
+function openWeatherHandler(apiKey, fetchData) {
+  return async (req, res) => {
+    const location = parseLocation(req.query);
+    if (!location) {
+      return res.status(400).json({ error: 'Provide a city, or lat and lon' });
+    }
+
+    if (!apiKey) {
+      console.error('OPENWEATHER_API_KEY is not set');
+      return res.status(500).json({ error: 'Server is not configured' });
+    }
+
+    try {
+      const { status, body } = await fetchData(location, apiKey);
+      if (status === 200) {
+        return res.json(body);
+      }
+      if (status === 404) {
+        return res.status(404).json({ error: 'City not found' });
+      }
+      // e.g. 401 (bad key) or 429 (rate limit): log it, but don't expose details to users.
+      // Never log the request URL - it contains the API key.
+      console.error(`OpenWeatherMap returned status ${status}`);
+      return res.status(502).json({ error: 'Weather service unavailable' });
+    } catch (err) {
+      // Network failure or timeout
+      console.error(`OpenWeatherMap request failed: ${err.name}`);
+      return res.status(502).json({ error: 'Weather service unavailable' });
+    }
+  };
+}
+
 // Builds and returns the Express app WITHOUT starting it.
 // Tests import this directly and send requests with supertest (no real port needed).
 // apiKey is a parameter so tests can pass a fake key (dependency injection).
@@ -21,35 +56,7 @@ export function createApp({ apiKey = process.env.OPENWEATHER_API_KEY } = {}) {
   });
 
   // Weather proxy: the browser calls us, we call OpenWeatherMap with the secret key
-  app.get('/api/weather', async (req, res) => {
-    const location = parseLocation(req.query);
-    if (!location) {
-      return res.status(400).json({ error: 'Provide a city, or lat and lon' });
-    }
-
-    if (!apiKey) {
-      console.error('OPENWEATHER_API_KEY is not set');
-      return res.status(500).json({ error: 'Server is not configured' });
-    }
-
-    try {
-      const { status, body } = await getWeather(location, apiKey);
-      if (status === 200) {
-        return res.json(body);
-      }
-      if (status === 404) {
-        return res.status(404).json({ error: 'City not found' });
-      }
-      // e.g. 401 (bad key) or 429 (rate limit): log it, but don't expose details to users.
-      // Never log the request URL - it contains the API key.
-      console.error(`OpenWeatherMap returned status ${status}`);
-      return res.status(502).json({ error: 'Weather service unavailable' });
-    } catch (err) {
-      // Network failure or timeout
-      console.error(`OpenWeatherMap request failed: ${err.name}`);
-      return res.status(502).json({ error: 'Weather service unavailable' });
-    }
-  });
+  app.get('/api/weather', openWeatherHandler(apiKey, getWeather));
 
   // Serve the built React app (index.html, JS, CSS). Registered AFTER the API routes,
   // so /health and /api/* always reach our code first.
