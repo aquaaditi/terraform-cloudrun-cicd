@@ -1,18 +1,17 @@
 import { useState } from "react";
+import { CloudOff, CloudSun, LoaderCircle, LocateFixed, Search } from "lucide-react";
+import CurrentWeather from "./components/CurrentWeather";
+import WeatherDetails from "./components/WeatherDetails";
+import { getTheme } from "./utils/weather";
 import "./App.css";
-import {
-  Search,
-  MapPin,
-  Wind,
-  Droplets,
-  Gauge,
-  LocateFixed,
-} from "lucide-react";
+
+const POPULAR_CITIES = ["New Delhi", "Mumbai", "London", "Tokyo", "New York"];
+const UNIT_KEY = "skycast-unit";
 
 // Calls OUR backend, which adds the secret API key on the server.
 // The browser never sees the key or talks to OpenWeatherMap directly.
-async function fetchWeather(params) {
-  const response = await fetch(`/api/weather?${new URLSearchParams(params)}`);
+async function fetchApi(path, params) {
+  const response = await fetch(`${path}?${new URLSearchParams(params)}`);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     // Show the backend's message, e.g. "City not found"
@@ -21,176 +20,162 @@ async function fetchWeather(params) {
   return data;
 }
 
+// The saved °C/°F choice. Storage can be blocked (e.g. private mode), so fall back to °C.
+function loadUnit() {
+  try {
+    return localStorage.getItem(UNIT_KEY) === "F" ? "F" : "C";
+  } catch {
+    return "C";
+  }
+}
+
 function App() {
   const [city, setCity] = useState("");
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [unit, setUnit] = useState(loadUnit);
 
-  const getWeather = async () => {
-    if (!city.trim()) return;
-
+  // One loader for search, city buttons and current location
+  const loadWeather = async (params) => {
     setLoading(true);
     setError("");
-
     try {
-      setWeather(await fetchWeather({ city }));
+      setWeather(await fetchApi("/api/weather", params));
     } catch (err) {
       setError(err.message);
       setWeather(null);
+    } finally {
+      setLoading(false); // always stop the spinner, even after an error
     }
-
-    setLoading(false);
   };
-  const getCurrentLocation = () => {
-  if (!navigator.geolocation) {
-    setError("Geolocation is not supported.");
-    return;
-  }
 
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      setLoading(true);
-      setError("");
+  const handleSearch = (event) => {
+    event.preventDefault(); // stop the form from reloading the page
+    if (city.trim()) loadWeather({ city: city.trim() });
+  };
 
-      try {
-        const { latitude, longitude } = position.coords;
-        setWeather(await fetchWeather({ lat: latitude, lon: longitude }));
-      } catch {
-        setError("Unable to fetch location weather.");
-      }
+  const handlePickCity = (name) => {
+    setCity(name);
+    loadWeather({ city: name });
+  };
 
-      setLoading(false);
-    },
-    () => {
-      setError("Location permission denied.");
+  const handleLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser.");
+      return;
     }
-  );
-};
+    setLoading(true);
+    setError("");
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => loadWeather({ lat: coords.latitude, lon: coords.longitude }),
+      () => {
+        setLoading(false);
+        setError("Location permission denied.");
+      },
+    );
+  };
+
+  const changeUnit = (next) => {
+    setUnit(next);
+    try {
+      localStorage.setItem(UNIT_KEY, next);
+    } catch {
+      // Storage blocked: the choice still works for this visit
+    }
+  };
+
+  // The background follows the current weather (e.g. "theme-rain")
+  const theme = weather ? getTheme(weather.weather[0].main, weather.weather[0].icon) : "default";
 
   return (
-    <div className="app">
+    <div className={`app theme-${theme}`}>
+      <main className="container">
+        <header className="topbar">
+          <div className="brand">
+            <CloudSun size={30} aria-hidden="true" />
+            <span>SkyCast</span>
+          </div>
+          <div className="unit-toggle" role="group" aria-label="Temperature unit">
+            {["C", "F"].map((u) => (
+              <button key={u} type="button" aria-pressed={unit === u} onClick={() => changeUnit(u)}>
+                °{u}
+              </button>
+            ))}
+          </div>
+        </header>
 
-      <h1>🌤 Weather Dashboard</h1>
+        <form className="search" onSubmit={handleSearch} role="search">
+          <label className="search-field">
+            <Search size={20} aria-hidden="true" />
+            <input
+              type="text"
+              name="city"
+              aria-label="City name"
+              placeholder="Search for a city..."
+              autoComplete="off"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+            />
+          </label>
+          <button type="submit" className="btn" disabled={loading}>
+            Search
+          </button>
+          <button
+            type="button"
+            className="btn btn-icon"
+            onClick={handleLocation}
+            disabled={loading}
+            aria-label="Use my current location"
+            title="Use my current location"
+          >
+            <LocateFixed size={20} aria-hidden="true" />
+          </button>
+        </form>
 
-      {/* Search Box */}
-
-     <div className="search-box">
-
-  <input
-    type="text"
-    name="city"
-    aria-label="City name"
-    placeholder="Enter city name..."
-    value={city}
-    onChange={(e) => setCity(e.target.value)}
-    onKeyDown={(e) => {
-      if (e.key === "Enter") {
-        getWeather();
-      }
-    }}
-  />
-
-  <button onClick={getWeather} disabled={loading}>
-    <Search size={20} />
-    {loading ? "Searching..." : "Search"}
-  </button>
-
-  <button onClick={getCurrentLocation}>
-    <LocateFixed size={20} />
-    Current Location
-  </button>
-
-</div>
-
-      {/* Error */}
-
-      {error && (
-        <p
-          style={{
-            color: "red",
-            textAlign: "center",
-            marginBottom: "20px",
-            fontSize: "18px",
-          }}
-        >
-          {error}
-        </p>
-      )}
-
-      {/* Message Before Search */}
-
-      {!weather && !loading && !error && (
-        <h3
-          style={{
-            textAlign: "center",
-            color: "#555",
-            marginTop: "50px",
-          }}
-        >
-          Search for any city to see weather.
-        </h3>
-      )}
-
-      {/* Weather Card */}
-
-      {weather && (
-        <div className="weather-card">
-
-          <h2>
-            <MapPin size={22} />
-            {weather.name}
-          </h2>
-
-          <h1>{Math.round(weather.main.temp)}°C</h1>
-
-          <p>
-            {weather.weather[0].main}{" "}
-            {weather.weather[0].main === "Clouds"
-              ? "☁️"
-              : weather.weather[0].main === "Rain"
-              ? "🌧️"
-              : weather.weather[0].main === "Clear"
-              ? "☀️"
-              : weather.weather[0].main === "Thunderstorm"
-              ? "⛈️"
-              : weather.weather[0].main === "Snow"
-              ? "❄️"
-              : "🌤️"}
+        {error && (
+          <p className="error" role="alert">
+            <CloudOff size={20} aria-hidden="true" />
+            {error}
           </p>
+        )}
 
-         <div className="details">
+        {loading && (
+          <div className="status" role="status">
+            <LoaderCircle size={40} className="spin" aria-hidden="true" />
+            <p>Loading weather...</p>
+          </div>
+        )}
 
-  <div className="detail-box">
-    <Droplets size={30} />
-    <span>Humidity</span>
-    <h3>{weather.main.humidity}%</h3>
-  </div>
+        {!loading && !weather && (
+          <section className="card welcome">
+            <CloudSun size={64} aria-hidden="true" />
+            <h2>Check the weather anywhere</h2>
+            <p>Search for a city, use your location, or try one of these:</p>
+            <div className="chips">
+              {POPULAR_CITIES.map((name) => (
+                <button key={name} type="button" className="chip" onClick={() => handlePickCity(name)}>
+                  {name}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
-  <div className="detail-box">
-    <Wind size={30} />
-    <span>Wind</span>
-    {/* OpenWeatherMap returns m/s in metric units; 1 m/s = 3.6 km/h */}
-    <h3>{Math.round(weather.wind.speed * 3.6)} km/h</h3>
-  </div>
+        {!loading && weather && (
+          <>
+            <CurrentWeather weather={weather} unit={unit} />
+            <WeatherDetails weather={weather} unit={unit} />
+          </>
+        )}
+      </main>
 
-  <div className="detail-box">
-    <Gauge size={30} />
-    <span>Pressure</span>
-    <h3>{weather.main.pressure} hPa</h3>
-  </div>
-
-  <div className="detail-box">
-    🌡️
-    <span>Feels Like</span>
-    <h3>{Math.round(weather.main.feels_like)}°C</h3>
-  </div>
-
-</div>
-
-        </div>
-      )}
-
+      <footer className="footer">
+        Weather data from{" "}
+        <a href="https://openweathermap.org" target="_blank" rel="noreferrer">
+          OpenWeatherMap
+        </a>
+      </footer>
     </div>
   );
 }

@@ -1,119 +1,365 @@
-body{
-  margin:0;
-  font-family:Arial, Helvetica, sans-serif;
+/* ---------- Base ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:Arial,Helvetica,sans-serif;
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
 }
 
-body{
-background:#d8ecff;
+body {
+  background: #1e3c72; /* shown for a split second before the app loads */
 }
 
-.app{
-max-width:900px;
-margin:40px auto;
-padding:30px;
+button,
+input {
+  font: inherit;
+  color: inherit;
 }
 
-.app h1{
-text-align:center;
-margin-bottom:30px;
-color:#16365c;
+/* Visible keyboard focus everywhere (accessibility) */
+:focus-visible {
+  outline: 3px solid #ffb703;
+  outline-offset: 2px;
 }
 
-.search-box{
-display:flex;
-justify-content:center;
-gap:15px;
-margin-bottom:40px;
+/* ---------- Background themes ----------
+   App.jsx adds a class like "theme-rain"; each theme only changes --sky */
+.app {
+  --sky: linear-gradient(160deg, #1e3c72 0%, #2a5298 50%, #6dd5ed 100%);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--sky);
 }
 
-.search-box input{
-width:350px;
-padding:15px;
-font-size:18px;
-border:none;
-border-radius:10px;
-outline:none;
+.theme-clear-day    { --sky: linear-gradient(160deg, #2980ff 0%, #56ccf2 55%, #ffd36e 100%); }
+.theme-clear-night  { --sky: linear-gradient(160deg, #0b1026 0%, #1b2a4e 55%, #3a4a7a 100%); }
+.theme-clouds-day   { --sky: linear-gradient(160deg, #4b6a8a 0%, #7f9bb8 55%, #b9cadb 100%); }
+.theme-clouds-night { --sky: linear-gradient(160deg, #1c2333 0%, #2f3b52 55%, #4a5872 100%); }
+.theme-rain         { --sky: linear-gradient(160deg, #233646 0%, #435d78 55%, #7189a3 100%); }
+.theme-storm        { --sky: linear-gradient(160deg, #141e30 0%, #35385a 55%, #5b4b7a 100%); }
+.theme-snow         { --sky: linear-gradient(160deg, #4f6f9c 0%, #87a3c9 55%, #c3d3ea 100%); }
+.theme-mist         { --sky: linear-gradient(160deg, #545f78 0%, #7f8e9c 55%, #aebcc8 100%); }
+
+.container {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.search-box button{
-display:flex;
-align-items:center;
-gap:8px;
-padding:15px 25px;
-background:#1976d2;
-color:white;
-border:none;
-border-radius:10px;
-cursor:pointer;
-font-size:17px;
+/* ---------- Glass card ----------
+   Dark, semi-transparent and blurred, so white text is readable on every theme */
+.card {
+  background: rgba(10, 20, 40, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 24px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 24px;
 }
 
-.search-box button:hover{
-background:#125ea9;
+/* ---------- Top bar ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.weather-card{
-background:white;
-padding:40px;
-border-radius:20px;
-box-shadow:0 10px 30px rgba(0,0,0,.15);
-transition: all 0.3s ease;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
-.weather-card h2{
-display:flex;
-align-items:center;
-gap:10px;
-margin-bottom:20px;
-color:#333;
+.unit-toggle {
+  display: flex;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
 }
 
-.weather-card h1{
-font-size:70px;
-margin:20px 0;
+.unit-toggle button {
+  border: 0;
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
 }
 
-.weather-card p{
-font-size:22px;
-margin-bottom:35px;
-color:gray;
+.unit-toggle button[aria-pressed="true"] {
+  background: #fff;
+  color: #1e3c72;
 }
 
-.details{
-display:grid;
-grid-template-columns:repeat(2,1fr);
-gap:20px;
+/* ---------- Search ---------- */
+.search {
+  display: flex;
+  gap: 10px;
 }
 
-.detail-box{
-background:#eef6ff;
-padding:20px;
-border-radius:15px;
-text-align:center;
+.search-field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #4b5563;
 }
 
-.detail-box svg{
-color:#1976d2;
-margin-bottom:10px;
+.search-field:focus-within {
+  box-shadow: 0 0 0 3px rgba(255, 183, 3, 0.8);
 }
 
-.detail-box span{
-display:block;
-color:gray;
-margin-bottom:8px;
+.search-field input {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #111827;
 }
 
-.detail-box h3{
-font-size:22px;
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 16px;
+  background: #ffb703;
+  color: #1f2937;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, filter 0.15s;
 }
 
-.weather-card:hover{
-  transform: translateY(-5px);
+.btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-icon {
+  padding: 0 16px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+/* ---------- Messages ---------- */
+.error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(185, 28, 28, 0.85);
+}
+
+.status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 64px 0;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Welcome ---------- */
+.welcome {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.welcome h2 {
+  margin: 12px 0 6px;
+  font-size: 1.6rem;
+}
+
+.welcome p {
+  opacity: 0.85;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.chip {
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.chip:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ---------- Current weather ---------- */
+.current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.city {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.7rem;
+  font-weight: 700;
+}
+
+.country {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.updated {
+  margin-top: 2px;
+  opacity: 0.8;
+  font-size: 0.95rem;
+}
+
+.temp {
+  margin: 16px 0 4px;
+  font-size: clamp(4rem, 12vw, 6.5rem); /* scales with screen width */
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.condition {
+  font-size: 1.3rem;
+  text-transform: capitalize;
+}
+
+.feels-like {
+  margin-top: 4px;
+  opacity: 0.85;
+}
+
+.current-icon {
+  width: clamp(96px, 22vw, 160px);
+  height: auto;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.25));
+}
+
+/* ---------- Detail tiles ---------- */
+.details {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px;
+  border-radius: 20px;
+}
+
+.detail-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.85;
+}
+
+.detail-value {
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+/* ---------- Footer ---------- */
+.footer {
+  padding: 16px;
+  text-align: center;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.footer a {
+  color: inherit;
+}
+
+/* ---------- Phones ---------- */
+@media (max-width: 640px) {
+  .search {
+    flex-wrap: wrap;
+  }
+
+  .search-field {
+    flex-basis: 100%;
+  }
+
+  .search .btn:not(.btn-icon) {
+    flex: 1;
+  }
+
+  .details {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Respect the user's "reduce motion" setting */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
