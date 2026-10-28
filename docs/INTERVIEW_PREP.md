@@ -168,6 +168,34 @@ A: A semantic `<form role="search">`, so Enter submits. `aria-label`s on icon-on
 
 ---
 
+## Caching and performance
+
+**Q: How did you improve the performance of your API?** *(real story)*
+A: I added a server-side in-memory cache with a 10-minute TTL in front of OpenWeatherMap. That matches how often their data updates. Repeat lookups for the same city dropped from about 440 ms to about 2 ms, and it reduces upstream calls, which protects the free-tier quota and makes the app more resilient when the API is slow.
+
+**Q: How did you choose the cache key?**
+A: Route name plus a normalised location: city names lowercased, so "Delhi" and "delhi" share one entry, and coordinates rounded to 2 decimals (about 1 km), so nearby users share entries. Including the route name keeps current weather and forecast separate. A good key maximises hits without ever returning the wrong data.
+
+**Q: Why don't you cache error responses?**
+A: A brief upstream failure would then be served to every user for the whole TTL, even after the upstream recovered. I only cache 200 responses, and I have a test where the upstream first fails and then recovers, asserting that the second request goes upstream again.
+
+**Q: How do you stop an in-memory cache from causing memory problems?**
+A: Two limits: a TTL, so stale entries are removed when read, and a maximum of 500 entries, so when it's full the oldest entry (first in the Map's insertion order) is evicted. Memory stays bounded, which matters on Cloud Run where the memory limit is fixed and exceeding it kills the instance.
+
+**Q: What are the limits of an in-memory cache on Cloud Run, and what would you use at scale?**
+A: Each instance has its own cache, so instances don't share hits, and everything is lost when Cloud Run scales to zero or replaces an instance. For slow-changing weather data that's an acceptable trade-off and costs nothing. If consistency across instances or a higher hit rate mattered, I'd use a shared cache such as Redis on Memorystore, accepting its always-on cost.
+
+**Q: How do you test time-based behaviour like a 10-minute TTL?**
+A: I inject the clock. The cache takes a `now` function that defaults to `Date.now`, and tests pass a fake clock they can advance instantly. TTL tests run in milliseconds and are fully deterministic.
+
+**Q: After adding caching, two existing tests failed. Why, and how did you fix it?** *(real story)*
+A: The tests in one file shared a single app instance, so they shared one cache. A success response cached by an earlier test was returned to a later test that expected an upstream error. That's shared state breaking test isolation. I turned caching off in the logic test files with `cacheTtlMs: 0` and moved caching into its own suite, which creates a fresh app in `beforeEach`.
+
+**Q: How can you tell whether a response came from the cache?**
+A: The server sets an `X-Cache: HIT` or `MISS` header, the same convention CDNs use. It's visible in browser DevTools and the tests assert on it, which makes cache behaviour easy to debug in production too.
+
+---
+
 ## Dependencies
 
 **Q: What's the difference between `npm audit fix` and `npm audit fix --force`?**

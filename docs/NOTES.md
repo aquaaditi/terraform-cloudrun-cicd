@@ -234,3 +234,37 @@ Passing tests do not prove the page looks right. I used Microsoft Edge in headle
 
 ### Removing unused files
 Before deleting the old Vite files, I searched the project to prove nothing used them. I used git rm, which deletes the files and stages the deletion together.
+
+---
+
+## Day 4: Server-side caching
+
+### What is a cache?
+A cache is a place where I keep a copy of an answer so I can reuse it later instead of asking again. When someone searches Delhi, my server asks OpenWeatherMap and saves the answer in memory. If anyone searches Delhi again soon, my server gives the saved answer straight away.
+
+### TTL: time to live
+Every saved answer has an expiry time called the TTL. I chose 10 minutes because OpenWeatherMap only updates its data about every 10 minutes, so keeping it longer would show old weather, and keeping it shorter would waste calls.
+
+### Why caching helps
+The first Delhi search took about 440 milliseconds. The repeat search took about 2 milliseconds, around 200 times faster. It also means fewer calls to OpenWeatherMap, so I stay inside the free limit, and my app keeps working better if OpenWeatherMap is slow.
+
+### How my cache works
+My cache uses a JavaScript Map. Each entry stores the answer and the time it expires. When I read an expired entry, the cache deletes it and returns nothing. The cache also has a size limit of 500 entries. When it is full, it removes the oldest entry, so memory can never grow forever. This matters on Cloud Run, where memory is limited and costs money.
+
+### The cache key
+The key decides which requests count as "the same". I make city names lowercase, so Delhi and delhi share one entry. I round coordinates to 2 decimal places, which is about 1 km, so nearby locations share an entry too. The key also includes the route name, so current weather and the forecast are saved separately.
+
+### Never cache errors
+I only save successful answers. If OpenWeatherMap has a problem for a moment and I saved that error, users would see the error for 10 minutes even after it is fixed. I wrote a test for this, and when I broke the code on purpose, the test caught it.
+
+### The X-Cache header
+My server adds a header called X-Cache to each answer. HIT means it came from the cache. MISS means it came from OpenWeatherMap. I can see it in the browser's Network tab. Big services like CDNs use the same idea.
+
+### Faking time in tests
+To test that entries expire after 10 minutes, I did not wait 10 minutes. I gave the cache a fake clock that I can move forward instantly. This is dependency injection again: the cache gets its clock from outside.
+
+### Shared state between tests
+After adding the cache, two old tests failed. All tests in one file shared one app and so one cache. An earlier test saved Delhi, and a later test that expected an error got the saved success instead. This is called shared state between tests. Good tests must be independent. I turned caching off in those test files and gave caching its own test file, where every test gets a fresh app.
+
+### Limits of my cache
+Each running copy of my server has its own cache in its own memory. Cloud Run can run several copies, and when it scales down to zero, the cache is lost. For weather data that is fine. If many copies needed to share one cache, I would use a shared cache like Redis, for example Google Memorystore, but it costs money all the time.
