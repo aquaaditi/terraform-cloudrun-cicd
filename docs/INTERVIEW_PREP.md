@@ -111,6 +111,40 @@ A: After moving the API call to the backend, the frontend only needed one simple
 
 ---
 
+## Dockerfile and container hardening
+
+**Q: Walk me through your Dockerfile.**
+A: It's a three-stage build on `node:24-alpine`. The `build` stage runs `npm ci` and `vite build` to produce `dist/`. The `deps` stage runs `npm ci --omit=dev` for runtime packages only. The `runtime` stage copies just `node_modules`, `dist/`, `package.json` and `server/`, sets `NODE_ENV=production` and `PORT=8080`, switches to the non-root `node` user, and starts with exec-form `CMD ["node", "server/index.js"]`. Build tools never reach the final image.
+
+**Q: Why use a multi-stage build?**
+A: To separate building from running. Compilers, bundlers and test tools are needed to build but not to run. Leaving them in earlier stages makes the image smaller and reduces the attack surface. My single-stage comparison image on `node:24` was 1.93 GB, ran as root and contained Jest and Vite. The multi-stage Alpine image is 250 MB and runs as a non-root user.
+
+**Q: Your image was bigger than expected. How did you investigate?** *(real story)*
+A: `docker history` showed a 54.6 MB `node_modules` layer, which was far too big for Express. Running `du` inside the container showed `lucide-react` at 40 MB and `react-dom` at 8 MB. Those are frontend libraries that Vite bundles into `dist/` at build time, and the server never imports them, but the template listed them as runtime dependencies. I confirmed the server didn't import them, moved them to devDependencies, re-ran lint, tests, build and audit, and the layer dropped to 5.4 MB.
+
+**Q: Why copy `package.json` and the lockfile before the source code?**
+A: Layer caching. Each instruction creates a cached layer, and a layer is rebuilt only if its inputs change. Copying only the dependency files before `npm ci` means a code-only change reuses the cached install layer, so rebuilds take seconds.
+
+**Q: Why run the container as a non-root user?**
+A: Least privilege. If someone exploited the app, they'd get the permissions of the `node` user instead of root, which limits what they could change or reach. I also left the app files owned by root, so the app user can't modify its own code. I verified that a write attempt fails with "Permission denied".
+
+**Q: How do secrets get into your container?**
+A: At runtime, never at build time. `.dockerignore` excludes `.env`, so it can't be copied in, and I verified it isn't in the image. Locally I pass `--env-file .env` to `docker run`. On Cloud Run the key comes from Secret Manager as an environment variable. Anything baked into an image can be read by anyone who can pull it.
+
+**Q: What is graceful shutdown and why does it matter on Cloud Run?**
+A: Cloud Run and `docker stop` send SIGTERM before stopping a container, then SIGKILL after a grace period. My server handles SIGTERM by closing the listener so in-flight requests can finish, then exits, with an 8-second safety timeout. `docker stop` went from a forced 10-second kill to 371 ms with exit code 0, and users don't get dropped requests during deploys or scale-down.
+
+**Q: Why exec form `CMD ["node", ...]` instead of `CMD npm start`?**
+A: Exec form runs Node directly as PID 1, so it receives SIGTERM. Shell form or `npm start` puts a shell or npm in between, and that process may not forward signals, which breaks graceful shutdown.
+
+**Q: Why did you choose Node 24 when the requirement said Node 20?** *(real story)*
+A: Before writing the Dockerfile I checked the official Node.js release schedule and found Node 20 had reached end-of-life on 30 April 2026, so it no longer gets security patches. I raised it, and we moved to Node 24, the active LTS supported until April 2028, which also matched local development. I updated `engines` in `package.json` to document it.
+
+**Q: What does `.dockerignore` do?**
+A: It excludes files from the build context sent to the Docker engine. That keeps secrets like `.env` out of images, makes builds faster by not sending `node_modules` or `.git`, and avoids copying host-specific binaries (Windows `node_modules`) into a Linux image.
+
+---
+
 ## Docker basics
 
 **Q: What's the difference between an image and a container?**

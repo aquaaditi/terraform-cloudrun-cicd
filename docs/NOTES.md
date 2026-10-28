@@ -268,3 +268,50 @@ After adding the cache, two old tests failed. All tests in one file shared one a
 
 ### Limits of my cache
 Each running copy of my server has its own cache in its own memory. Cloud Run can run several copies, and when it scales down to zero, the cache is lost. For weather data that is fine. If many copies needed to share one cache, I would use a shared cache like Redis, for example Google Memorystore, but it costs money all the time.
+
+I saw this myself: when my server restarted, the first search was a MISS again, because the memory was cleared.
+
+---
+
+## Day 4: Docker
+
+### Why I upgraded to Node 24
+My plan said Node 20, but Node 20 reached end of life on 30 April 2026. End of life means no more security fixes. Node 24 is the current long-term support version and is supported until 2028. My laptop already used Node 24, so the container now matches my laptop.
+
+### What is .dockerignore?
+When I build an image, Docker first sends my project folder to the Docker engine. This is called the build context. .dockerignore lists files that must not be sent. I exclude .env so my API key can never get inside an image. I exclude node_modules because the image installs its own clean copy, and my Windows copy could break on Linux. I also exclude .git, tests and docs because the app does not need them to run.
+
+### What is a Dockerfile?
+A Dockerfile is a recipe that tells Docker how to build an image, step by step. Each step creates a layer. Docker saves layers in a cache, so unchanged steps are reused and rebuilds are fast.
+
+### Multi-stage build
+My Dockerfile has three stages. The build stage installs all packages and builds the React website into dist. The deps stage installs only the packages needed to run the server. The final runtime stage starts fresh and copies in only dist, the server code and the production packages. Build tools like Vite and Jest stay behind in the earlier stages.
+
+### Copy package files first
+I copy package.json and package-lock.json before the source code, then run npm ci. If I only change my code, Docker reuses the saved npm ci layer, so the rebuild takes seconds instead of a minute.
+
+### Alpine
+Alpine is a very small Linux. Using node:24-alpine makes the image much smaller than the normal Debian-based node image, and fewer programs inside means fewer things that can have security problems.
+
+### Running as a non-root user
+By default, programs in a container run as root, the most powerful user. The official Node image has a normal user called node, and I switch to it with USER node. My app files stay owned by root, so the app can read its code but cannot change it. I tested this: trying to edit a file gave "Permission denied".
+
+### Secrets at runtime, not build time
+My API key is not inside the image. I pass it when I start the container with --env-file .env. I checked that .env does not exist inside the image. On Cloud Run, the key will come from Secret Manager the same way, as an environment variable.
+
+### Graceful shutdown
+When Docker or Cloud Run wants to stop my container, it first sends a signal called SIGTERM. My server now listens for it, stops taking new requests, finishes the current ones and exits. docker stop took 0.37 seconds with exit code 0. Without this, Docker waits 10 seconds and then kills the app by force.
+
+I used the exec form of CMD, which is CMD ["node", "server/index.js"]. This makes Node the main process, so it receives the SIGTERM signal directly.
+
+### The size problem I found
+My first image was 303 MB, and the node_modules layer was 54.6 MB. I looked inside and found lucide-react (40 MB) and react-dom (8 MB). These are frontend libraries. Vite copies what it needs into dist during the build, so the server never uses them. They were listed as normal dependencies, so they got installed. I moved them to devDependencies. Now Express is the only runtime package, node_modules is 5.4 MB and the image is 250 MB.
+
+### Comparing with a simple Dockerfile
+I also built a simple one-stage image using the full node:24 image, the way many tutorials do it. It was 1.93 GB, ran as root and contained Jest, Vite and ESLint. My image is about 8 times smaller, runs as a normal user and contains only what the app needs. Smaller images upload faster, start faster on Cloud Run and are safer.
+
+### Docker commands I used
+docker build -t skycast:local . builds an image and gives it a name and tag. docker run -d starts a container in the background. -p 8081:8080 connects port 8081 on my laptop to port 8080 inside the container. docker ps shows running containers. docker logs shows what the app printed. docker exec runs a command inside a running container. docker stop stops it gracefully. docker history shows the size of each layer.
+
+### A safety check stopped me
+I tried to remove an old container with a command that used a shell variable. A safety check blocked it because it could not be sure what would be deleted. I stopped the container instead, which deletes nothing. Being careful with delete commands is an important habit.
