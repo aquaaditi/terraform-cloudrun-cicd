@@ -3,8 +3,9 @@ import request from 'supertest';
 import { createApp } from '../server/app.js';
 import { summarizeForecast } from '../server/weather.js';
 
+// Caching is off so tests can't affect each other; caching has its own tests
 const API_KEY = 'test-api-key';
-const app = createApp({ apiKey: API_KEY });
+const app = createApp({ apiKey: API_KEY, cacheTtlMs: 0 });
 
 const IST_OFFSET = 19800; // India is UTC+5:30 = 19800 seconds
 

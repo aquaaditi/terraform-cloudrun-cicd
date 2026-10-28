@@ -17,6 +17,14 @@ export function parseLocation(query) {
   return validLat && validLon ? { lat, lon } : null;
 }
 
+// Cache key for a location. "Delhi" and "delhi" are the same city, and coordinates
+// are rounded to 2 decimals (about 1 km) so nearby requests share an entry.
+export function locationKey(location) {
+  return location.city
+    ? `city:${location.city.toLowerCase()}`
+    : `coords:${location.lat.toFixed(2)},${location.lon.toFixed(2)}`;
+}
+
 // Calls an OpenWeatherMap endpoint ("weather" or "forecast") from the server,
 // so the API key never reaches the browser. Returns the upstream status and JSON body.
 async function callOpenWeather(endpoint, location, apiKey) {

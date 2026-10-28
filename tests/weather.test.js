@@ -2,9 +2,10 @@ import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals
 import request from 'supertest';
 import { createApp } from '../server/app.js';
 
-// A fake key: tests never need the real secret (dependency injection via createApp)
+// A fake key: tests never need the real secret (dependency injection via createApp).
+// Caching is off so tests can't affect each other; caching has its own tests.
 const API_KEY = 'test-api-key';
-const app = createApp({ apiKey: API_KEY });
+const app = createApp({ apiKey: API_KEY, cacheTtlMs: 0 });
 
 const sampleWeather = { name: 'Delhi', main: { temp: 20 }, weather: [{ main: 'Clear' }] };
 
@@ -130,7 +131,7 @@ describe('GET /api/weather - errors', () => {
 
   it('returns 500 when the API key is not configured', async () => {
     const fetchMock = mockOpenWeather(200, sampleWeather);
-    const appWithoutKey = createApp({ apiKey: '' });
+    const appWithoutKey = createApp({ apiKey: '', cacheTtlMs: 0 });
 
     const res = await request(appWithoutKey).get('/api/weather?city=Delhi');
 
