@@ -149,3 +149,46 @@ My test script once asked for the page before the server had fully started and g
 docker ps shows only running containers. docker ps -a shows all containers, including stopped ones. docker images shows the images I have.
 
 An image is like a recipe, and a container is a running copy made from that recipe. A container only lives as long as its main program runs. hello-world prints a message and stops, so its container shows "Exited (0)", and 0 means it finished successfully. My Express server keeps running, so its container will stay up.
+
+---
+
+## Day 3: Linting and tests
+
+### What is a linter?
+A linter reads my code without running it and finds mistakes, like using a variable that does not exist. I use ESLint. It checks code automatically, so problems are caught before they reach users.
+
+### Why ESLint said "process is not defined"
+My ESLint settings only knew about browser code. process exists in Node.js, not in browsers, so ESLint thought it was a mistake. I split the settings into two parts. The src folder uses browser rules and React rules. The server folder, tests folder and config files use Node.js rules. Now each part is checked with the right rules.
+
+I also checked that ESLint really looked at all my files. A linter that skips files also shows zero errors, so zero errors alone does not prove anything.
+
+### Exit codes
+Every command ends with a number called the exit code. 0 means success. Any other number means failure. GitHub Actions only looks at this number to decide if a step passed or failed. So if a test fails, the exit code is 1 and the deploy will stop.
+
+### What are Jest and supertest?
+Jest runs my tests and tells me which passed and which failed. supertest sends fake web requests directly to my Express app without starting a real server. This works because app.js only builds the app and does not start it.
+
+Both are devDependencies. They are needed only for development and testing, not in production, so they will not go into my Docker image.
+
+### How a test is written
+A test has three parts: arrange, act and assert. First I set things up. Then I do the action, like sending a request. Then I check the result with expect. describe groups related tests together, and each it is one test that reads like a sentence.
+
+### Making Jest work with modern JavaScript
+My project uses import and export, which are called ES modules. Jest needs a special Node flag for this, called experimental-vm-modules. I wrote the test script in a way that works on both Windows and Linux. The "ExperimentalWarning" message is normal and harmless.
+
+### A test must be able to fail
+I broke my app on purpose by changing "ok" to "okay" and ran the tests. The test failed and the exit code was 1. Then I restored the file. This proves my test really checks something. A test that can never fail is useless.
+
+### What is mocking?
+My weather route calls the real internet using fetch. In tests I replace fetch with a fake version that returns whatever I want, like weather data, a 404 or an error. This fake is called a mock. After each test I put the real fetch back.
+
+Mocking means my tests need no real API key, so GitHub Actions never needs my secret. They need no internet, so they are fast and never fail randomly. I can also test problems that are hard to create for real, like OpenWeatherMap being down or too slow.
+
+### What my tests check
+I have 14 tests. They check that /health returns ok and hides the X-Powered-By header. They check that bad input gets error 400 and never reaches OpenWeatherMap. They check success with a city and with latitude and longitude. They check that a user cannot sneak an extra parameter into my request. They check 404, 502 and 500 errors, and that the API key never appears in a response or in the logs.
+
+### Running everything like CI
+npm ci is like npm install, but stricter. It deletes node_modules and installs exactly the versions in package-lock.json. CI servers use it so every build is the same. I ran npm ci, lint, tests, build and a security audit from a clean start, and everything passed.
+
+### Deciding about security warnings
+After installing Jest, npm audit showed 5 low warnings in a package used inside Jest. The suggested fix would downgrade Jest to a very old version, which is worse. The problem only affects development tools, not my live app, and the production audit shows zero problems. So I accepted this small risk. Not every warning needs a forced fix. I look at how serious it is, where the code runs, and what the fix would break.

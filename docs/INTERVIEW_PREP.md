@@ -121,6 +121,31 @@ A: `docker ps` only lists running containers. A container stops when its main pr
 
 ---
 
+## Testing and code quality
+
+**Q: How do you test an API that depends on a third-party service?**
+A: I mock the dependency. My Express route calls OpenWeatherMap through the global `fetch`, so in Jest I replace it with `jest.spyOn(globalThis, 'fetch')` and return a fake `Response` for each scenario: success, 404, 401, or a rejected promise for a timeout. Tests then need no API key, no network and no quota, run in about a second, and never fail because of the external service.
+
+**Q: What's the difference between Jest and supertest?**
+A: Jest is the test runner and assertion library: it finds tests, runs them and reports results with `expect`. supertest sends HTTP requests directly to an Express app in memory, without starting a server on a port. I build the app in `app.js` and start it in `index.js`, so tests import only the app.
+
+**Q: How do you know your tests actually work?**
+A: I make them fail on purpose. I changed the health response from "ok" to "okay", ran the tests, saw the failure and a non-zero exit code, then restored the code. A test that has never failed might not be asserting anything. This is the basic idea behind mutation testing.
+
+**Q: What security behaviour do your tests cover?**
+A: Three things. Invalid input is rejected with 400 before any upstream call. A city value like `New York&appid=evil` can't inject an extra query parameter, because the test checks that only one `appid` is sent. And when the upstream rejects the key, the response and the logs never contain the key: I spy on `console.error` and assert on what was logged.
+
+**Q: Why do CI pipelines rely on exit codes?**
+A: The runner decides pass or fail from the process exit code: 0 means success, anything else fails the step and stops later steps such as deploy. Jest and ESLint return non-zero on failures, so a failing test automatically blocks the deployment.
+
+**Q: Your linter reported "process is not defined". What was wrong?**
+A: The ESLint config only had browser globals, but server code runs in Node.js, where `process` exists. I split the flat config into a browser block for `src/` with the React rules, and a Node block for `server/`, `tests/` and config files. I also confirmed ESLint really linted every file, because "0 errors" can also mean "nothing was checked".
+
+**Q: npm audit flagged vulnerabilities after you installed Jest. What did you do?** *(real story)*
+A: I read the report. There were 5 low-severity issues in `deepmerge`, used only inside Jest's config loader, so dev-only. The suggested `--force` fix would downgrade Jest from 30 to 25, a breaking and older release. The production audit (`--omit=dev`) showed 0 vulnerabilities, so I accepted the low dev-only risk and planned `npm audit --omit=dev --audit-level=high` for CI. Triaging by severity and runtime exposure is better than forcing every fix.
+
+---
+
 ## Dependencies
 
 **Q: What's the difference between `npm audit fix` and `npm audit fix --force`?**
