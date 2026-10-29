@@ -56,15 +56,17 @@ Each day is roughly 2–3 hours and ends with small, Conventional Commits pushed
 | 3+ | Extra | `/api/forecast` route, UI redesign (themes, details, 5-day forecast) | ✅ Done |
 | 4 | Extra | Server-side caching (10-minute TTL, `X-Cache` header) | ✅ Done |
 | 4 | 2. Docker | Multi-stage Dockerfile (node:24-alpine), non-root user, `.dockerignore`, graceful shutdown | ✅ Done |
-| 5 | 3. Terraform I | Budget alert, remote state, provider, variables, APIs, Artifact Registry | ⬜ |
-| 6 | 3. Terraform II | Least-privilege service accounts, Secret Manager, Cloud Run | ⬜ |
-| 7 | 3. Terraform III | Workload Identity Federation pool + provider for GitHub | ⬜ |
-| 8 | 4. CI | Feature branch, test workflow, first pull request | ⬜ |
-| 9 | 4. CD | Deploy job: WIF auth, build, push, deploy to Cloud Run | ⬜ |
-| 10 | 5. Environments | Staging auto-deploy, production behind GitHub Environment approval | ⬜ |
-| 11 | 5. Monitoring | Uptime check + email alert policy, rollback runbook | ⬜ |
-| 12 | 6. Docs | README with diagram, pipeline walkthrough, costs, screenshots | ⬜ |
-| 13–14 | Buffer | Fixes, hardening, interview revision | ⬜ |
+| 4 | Extra | Animated weather scenes, live city clock, sun arc | ✅ Done |
+| 5–6 | Extra | Hourly forecast, AQI, city search, smart tips, alerts, charts, compare cities, PWA | ⬜ |
+| 7 | 3. Terraform I | Budget alert, remote state, provider, variables, APIs, Artifact Registry | ⬜ |
+| 8 | 3. Terraform II | Least-privilege service accounts, Secret Manager, Cloud Run | ⬜ |
+| 9 | 3. Terraform III | Workload Identity Federation pool + provider for GitHub | ⬜ |
+| 10 | 4. CI | Feature branch, test workflow, first pull request | ⬜ |
+| 11 | 4. CD | Deploy job: WIF auth, build, push, deploy to Cloud Run | ⬜ |
+| 12 | 5. Environments | Staging auto-deploy, production behind GitHub Environment approval | ⬜ |
+| 13 | 5. Monitoring | Uptime check + email alert policy, rollback runbook | ⬜ |
+| 14 | 6. Docs | README with diagram, pipeline walkthrough, costs, screenshots | ⬜ |
+| 15–16 | Buffer | Fixes, hardening, interview revision | ⬜ |
 
 ## Progress log
 
