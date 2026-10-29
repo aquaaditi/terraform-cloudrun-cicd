@@ -5,6 +5,63 @@ Plan: [ROADMAP.md](ROADMAP.md) · Study notes: [docs/NOTES.md](docs/NOTES.md) ·
 
 ---
 
+## Day 4 — 2026-10-29 — Caching, Docker and a living interface
+
+### What I built
+- A server-side cache. The same city searched within 10 minutes is answered from memory, and an X-Cache header says HIT or MISS. A repeat Delhi search went from about 440 ms to about 2 ms.
+- Graceful shutdown. When Docker or Cloud Run sends SIGTERM, the server finishes its requests and exits cleanly.
+- A .dockerignore and a three-stage Dockerfile on node:24-alpine that runs as the non-root node user.
+- Animated weather scenes behind the app: rain, snow, stars and moon, clouds, sun glow, fog and lightning.
+- A live clock for the searched city and a sun arc that shows where the sun is between sunrise and sunset.
+- Cloud cover and last-hour rain tiles, and cards that slide in for each new city.
+
+### What I learned
+- How a cache works: TTL, cache keys, a size limit, and why errors must never be cached.
+- How to fake time in tests by injecting the clock.
+- Multi-stage builds, layer caching, Alpine, non-root users and passing secrets only at runtime.
+- Why exec-form CMD matters: Node must be the main process to receive SIGTERM.
+- How to read docker history and look inside a running container with docker exec.
+- Custom React hooks with cleanup, keeping components pure, and mocking network requests in a real browser.
+
+### Problems and how I fixed them
+- **Node 20 was end of life.** Before writing the Dockerfile I checked the official release schedule. Node 20 stopped getting security fixes on 30 April 2026, so I moved to Node 24 LTS.
+- **Two tests broke after adding the cache.** Tests in one file shared one app and one cache, so a saved success leaked into a test that expected an error. I turned caching off in those files and gave caching its own tests with a fresh app each time.
+- **The first image was 303 MB.** docker history showed a 54.6 MB node_modules layer. lucide-react and react-dom were inside, but the server never uses them. I moved them to devDependencies. The image dropped to 250 MB, against 1.93 GB for a basic single-stage build.
+- **The local server kept stopping.** It lived in a terminal that got closed. Running it as a Docker container with -d fixed this for good.
+- **Docker commands failed after a restart.** Docker Desktop was still starting. I learned to wait for "Engine running" and that Exited (255) means a container was cut off, not stopped cleanly.
+- **Port already allocated.** Two containers tried to use port 8081. Only one program can use a port at a time.
+- **Phone layout problems.** Screenshots showed the sun card times wrapping and the moon covering the search bar. Small CSS fixes solved both.
+
+### Result
+SkyCast runs in a 250 MB container as a non-root user, stops in 0.37 seconds, and has animated weather scenes. 58 tests pass. 49 commits in the repo.
+
+---
+
+## Day 3 — 2026-10-28 — Tests, forecast and redesign
+
+### What I built
+- ESLint settings split into browser rules for the React code and Node rules for the server and tests.
+- Jest and supertest tests for /health and /api/weather, with OpenWeatherMap mocked so tests need no real key or internet.
+- A shared route handler (a refactor) and a new /api/forecast route that turns 40 three-hour entries into 5 daily summaries.
+- A full UI redesign called SkyCast: weather-based backgrounds, glass cards, weather icons, detail tiles, a °C/°F toggle, popular cities, and a 5-day forecast with temperature bars.
+- Formatting helpers with unit tests, a new page title and favicon.
+
+### What I learned
+- Exit codes decide pass or fail in CI.
+- Mocking, arrange-act-assert, and breaking code on purpose to prove a test can fail.
+- Refactoring safely with tests, and DRY.
+- Timezones: the forecast is in UTC, so days must use the city's offset.
+- React components, props and state, Promise.allSettled, and accessibility basics.
+- Checking the UI with headless Edge screenshots, not just with tests.
+
+### Problems and how I fixed them
+- **ESLint said "process is not defined".** It only knew browser globals. Splitting the config fixed it.
+- **npm audit showed 5 low warnings after installing Jest.** The suggested fix would downgrade Jest to a 2020 version. They were dev-only and the production audit was clean, so I accepted the risk.
+- **Late forecast entries would land on the wrong day.** I added the city's timezone offset and wrote a test that fails if the offset is removed.
+- **The browser could not reach localhost.** The server had stopped. I learned that a server must keep running in its own terminal.
+
+---
+
 ## Day 2 — 2026-10-27 — Express backend
 
 ### What I built
@@ -60,9 +117,8 @@ The full app runs on one server at localhost:8080. The DevTools Network tab show
 
 ---
 
-## Next session — Day 3
-- Fix ESLint so it understands Node.js files (server code uses process, which browsers don't have).
-- Add Jest and supertest.
-- Write tests for /health and /api/weather, with OpenWeatherMap mocked so tests need no real key or internet.
-- Add npm test and npm run lint scripts, which GitHub Actions will run later.
-- End Phase 1 with a summary and 3 interview questions.
+## Next session — Day 5
+- Part 2 of the SkyCast upgrade (backend, with tests): hourly forecast for the next 24 hours, chance of rain per day, an /api/air route for the Air Quality Index, and an /api/places route for city suggestions.
+- Part 3 (UI): mood line and what to wear, alerts banner, AQI card, hourly SVG chart with best time to go out, golden-hour sky, recent searches, voice search and autocomplete.
+- Part 4 (extras): compare two cities, and PWA install with offline mode.
+- Then Phase 3: Terraform, starting with a budget alert.

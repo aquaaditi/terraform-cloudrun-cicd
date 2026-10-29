@@ -318,7 +318,7 @@ I tried to remove an old container with a command that used a shell variable. A 
 
 ---
 
-## Day 5: A living interface
+## Day 4 (continued): A living interface
 
 ### Animated weather scenes
 Behind the app there is now a moving scene that matches the weather. Rain falls, snow drifts, stars twinkle with a moon at night, clouds float, a sun glows on clear days, fog rolls in mist, and lightning flashes in storms. It is made only with CSS animations, so there are no image downloads.
