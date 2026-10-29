@@ -49,6 +49,193 @@ input {
 .theme-snow         { --sky: linear-gradient(160deg, #4f6f9c 0%, #87a3c9 55%, #c3d3ea 100%); }
 .theme-mist         { --sky: linear-gradient(160deg, #545f78 0%, #7f8e9c 55%, #aebcc8 100%); }
 
+/* ---------- Animated weather scene ----------
+   Fixed behind the content; pointer-events: none so it never blocks clicks.
+   Animations only change transform/opacity, which the GPU handles smoothly. */
+.scene {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container,
+.footer {
+  position: relative; /* sit above the scene */
+  z-index: 1;
+}
+
+.scene-sun {
+  position: absolute;
+  top: -140px;
+  right: -140px;
+  width: 460px;
+  height: 460px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 240, 170, 0.95) 0%, rgba(255, 200, 80, 0.45) 30%, transparent 70%);
+  animation: sun-pulse 6s ease-in-out infinite;
+}
+
+.scene-sun.soft {
+  opacity: 0.45; /* sun behind clouds */
+}
+
+.scene-moon {
+  position: absolute;
+  top: 70px;
+  right: 9%;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  box-shadow: inset -24px -8px 0 0 rgba(255, 252, 230, 0.95); /* crescent shape */
+  filter: drop-shadow(0 0 22px rgba(255, 250, 210, 0.55));
+}
+
+.star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  animation: twinkle 3s ease-in-out infinite;
+}
+
+.cloud {
+  position: absolute;
+  left: 0;
+  width: 220px;
+  height: 64px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  filter: blur(6px);
+  animation: drift linear infinite;
+}
+
+.cloud::before,
+.cloud::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: inherit;
+}
+
+.cloud::before {
+  width: 110px;
+  height: 110px;
+  top: -55px;
+  left: 30px;
+}
+
+.cloud::after {
+  width: 80px;
+  height: 80px;
+  top: -38px;
+  left: 115px;
+}
+
+.drop {
+  position: absolute;
+  top: -40px;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(transparent, rgba(200, 225, 255, 0.75));
+  animation: fall linear infinite;
+}
+
+.flake {
+  position: absolute;
+  top: -20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  filter: blur(0.5px);
+  animation: snowfall linear infinite;
+}
+
+.fog {
+  position: absolute;
+  left: -50%;
+  width: 200%;
+  height: 45%;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.28), transparent 70%);
+  filter: blur(20px);
+  animation: fog-drift 40s ease-in-out infinite alternate;
+}
+
+.fog-1 {
+  top: 15%;
+}
+
+.fog-2 {
+  top: 55%;
+  animation-duration: 55s;
+  animation-direction: alternate-reverse;
+}
+
+.lightning {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.85);
+  opacity: 0;
+  animation: flash 9s linear infinite;
+}
+
+@keyframes sun-pulse {
+  50% { transform: scale(1.08); }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+
+@keyframes drift {
+  from { transform: translateX(-320px); }
+  to { transform: translateX(100vw); }
+}
+
+@keyframes fall {
+  to { transform: translateY(110vh); }
+}
+
+@keyframes snowfall {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(25px, 55vh); }
+  100% { transform: translate(-10px, 110vh); }
+}
+
+@keyframes fog-drift {
+  from { transform: translateX(-8%); }
+  to { transform: translateX(8%); }
+}
+
+/* Two quick flashes, then darkness for most of the cycle */
+@keyframes flash {
+  0%, 90%, 92.5%, 95%, 100% { opacity: 0; }
+  91% { opacity: 0.8; }
+  93.5% { opacity: 0.5; }
+}
+
+/* Results slide up gently when a new city loads */
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.results > * {
+  animation: rise 0.5s ease both;
+}
+
+.results > :nth-child(2) { animation-delay: 0.08s; }
+.results > :nth-child(3) { animation-delay: 0.16s; }
+.results > :nth-child(4) { animation-delay: 0.24s; }
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
 .container {
   width: 100%;
   max-width: 960px;

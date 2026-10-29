@@ -3,6 +3,7 @@ import { CloudOff, CloudSun, LoaderCircle, LocateFixed, Search } from "lucide-re
 import CurrentWeather from "./components/CurrentWeather";
 import Forecast from "./components/Forecast";
 import WeatherDetails from "./components/WeatherDetails";
+import WeatherScene from "./components/WeatherScene";
 import { cityDate, getTheme } from "./utils/weather";
 import "./App.css";
 
@@ -102,6 +103,8 @@ function App() {
 
   return (
     <div className={`app theme-${theme}`}>
+      <WeatherScene theme={theme} />
+
       <main className="container">
         <header className="topbar">
           <div className="brand">
@@ -175,7 +178,8 @@ function App() {
         )}
 
         {!loading && weather && (
-          <>
+          // A new key for each result makes React re-create this block, replaying the entrance animation
+          <div className="results" key={`${weather.id}-${weather.dt}`}>
             <CurrentWeather weather={weather} unit={unit} />
             {forecast?.length > 0 && (
               <Forecast
@@ -185,7 +189,7 @@ function App() {
               />
             )}
             <WeatherDetails weather={weather} unit={unit} />
-          </>
+          </div>
         )}
       </main>
 
