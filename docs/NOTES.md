@@ -315,3 +315,36 @@ docker build -t skycast:local . builds an image and gives it a name and tag. doc
 
 ### A safety check stopped me
 I tried to remove an old container with a command that used a shell variable. A safety check blocked it because it could not be sure what would be deleted. I stopped the container instead, which deletes nothing. Being careful with delete commands is an important habit.
+
+---
+
+## Day 5: A living interface
+
+### Animated weather scenes
+Behind the app there is now a moving scene that matches the weather. Rain falls, snow drifts, stars twinkle with a moon at night, clouds float, a sun glows on clear days, fog rolls in mist, and lightning flashes in storms. It is made only with CSS animations, so there are no image downloads.
+
+The scene sits behind the content with position fixed, and pointer-events none means it can never block a click. The animations only change position and transparency, which the graphics card handles, so they stay smooth on phones. People who turn on "reduce motion" in their system settings see no movement.
+
+### Keeping React components pure
+A React component must always show the same thing for the same input. So I did not use Math.random to place raindrops, because that would change on every redraw. Instead, a small formula spreads them out in a pattern that looks random. It runs once when the file loads.
+
+### Replaying the entrance animation
+The weather cards slide up when a city loads. To replay this for every new city, I gave the results block a key made from the city and time. When the key changes, React treats it as a brand new block and the animation plays again.
+
+### A custom hook: useNow
+A hook is reusable component logic, and its name starts with use. useNow gives the current time and updates it every 10 seconds, so the city clock keeps ticking. It starts a timer with useEffect and returns a cleanup function that stops the timer when the component disappears. Forgetting cleanup causes memory leaks.
+
+### Live clock versus update time
+The main card now shows two different times. The big line is the city's current local time, which ticks. The small "Updated" time is when OpenWeatherMap measured the data. Before, these were mixed up.
+
+### The sun arc
+The sun card draws a half circle from sunrise to sunset with a glowing dot where the sun is now. I worked out the position with simple trigonometry: at sunrise the dot is at the left end, at sunset at the right end. It also shows how much daylight is left, or how long until sunrise.
+
+### Testing the look with fake data
+I cannot make it rain in London when I want to. So my test script told the browser to answer the weather request itself with fake data for each weather type. This is called mocking the network, and tools like Playwright do the same. It let me screenshot all seven scenes and check for errors.
+
+### Fixing what the screenshots showed
+The phone screenshots showed two layout problems. The sun card times wrapped onto two lines, and the moon covered the search bar. I fixed both with small CSS changes and checked again. Looking at the real result, not just passing tests, catches problems tests cannot see.
+
+### Stopping only my own processes
+My cleanup command once missed my test server, because Windows did not mark it as listening. I found it by its process ID and checked its full command before stopping it, so I would not stop anything of the user's. Always check what a process is before you kill it.

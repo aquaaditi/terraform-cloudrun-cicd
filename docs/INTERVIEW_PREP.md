@@ -228,6 +228,18 @@ A: The tests in one file shared a single app instance, so they shared one cache.
 **Q: How can you tell whether a response came from the cache?**
 A: The server sets an `X-Cache: HIT` or `MISS` header, the same convention CDNs use. It's visible in browser DevTools and the tests assert on it, which makes cache behaviour easy to debug in production too.
 
+**Q: How did you build the animated weather backgrounds, and how did you keep them fast?**
+A: A `WeatherScene` component renders decorative layers (raindrops, snowflakes, stars, clouds, fog, lightning) chosen by the weather theme, animated purely with CSS keyframes. Animations only touch `transform` and `opacity`, which the browser composites on the GPU without re-layout, so they stay smooth on phones. The layer is `position: fixed` with `pointer-events: none` and `aria-hidden`, and `prefers-reduced-motion` turns all motion off.
+
+**Q: Why not use `Math.random()` to position the raindrops?**
+A: React components should be pure: same props, same output. Random values during render would change on every re-render and make the UI jump. I compute positions once at module load with a deterministic formula that looks random, so every render of a theme is identical.
+
+**Q: What is a custom React hook? Give an example from your project.**
+A: A reusable function that uses React hooks and starts with `use`. My `useNow` hook stores the current time in state and uses `useEffect` to start a `setInterval` that updates it every 10 seconds. The effect returns a cleanup that calls `clearInterval`, so the timer stops when the component unmounts and doesn't leak.
+
+**Q: How did you test UI states you can't reproduce on demand, like a thunderstorm?** *(real story)*
+A: I mocked the network inside the browser. Using the DevTools Protocol `Fetch` domain, my script intercepted `/api/weather` requests in headless Edge and answered them with fake data for each condition, then screenshotted every scene at desktop and phone sizes and collected JavaScript errors. The screenshots exposed two mobile layout bugs that tests couldn't catch, which I fixed and re-verified.
+
 ---
 
 ## Dependencies
