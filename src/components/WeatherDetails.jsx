@@ -1,12 +1,5 @@
-import { Droplets, Eye, Gauge, Sunrise, Sunset, Wind } from "lucide-react";
-import {
-  formatCityTime,
-  formatVisibility,
-  formatWind,
-  windDirection,
-} from "../utils/weather";
-
-const TIME = { hour: "numeric", minute: "2-digit" };
+import { Cloud, Droplets, Eye, Gauge, Umbrella, Wind } from "lucide-react";
+import { formatVisibility, formatWind, windDirection } from "../utils/weather";
 
 // One small tile: icon + label + value
 function Detail({ icon: Icon, label, value }) {
@@ -21,9 +14,9 @@ function Detail({ icon: Icon, label, value }) {
   );
 }
 
-// Grid of extra measurements. Sunrise/sunset use the CITY's timezone.
+// Grid of extra measurements (sunrise/sunset are shown in the SunArc card)
 export default function WeatherDetails({ weather, unit }) {
-  const { main, wind, sys, timezone, visibility } = weather;
+  const { main, wind, visibility, clouds, rain } = weather;
 
   return (
     <section className="details" aria-label="Weather details">
@@ -39,8 +32,9 @@ export default function WeatherDetails({ weather, unit }) {
         label="Visibility"
         value={visibility != null ? formatVisibility(visibility) : "—"}
       />
-      <Detail icon={Sunrise} label="Sunrise" value={formatCityTime(sys.sunrise, timezone, TIME)} />
-      <Detail icon={Sunset} label="Sunset" value={formatCityTime(sys.sunset, timezone, TIME)} />
+      <Detail icon={Cloud} label="Cloud cover" value={`${clouds?.all ?? 0}%`} />
+      {/* OpenWeatherMap only includes "rain" when it rained in the last hour */}
+      <Detail icon={Umbrella} label="Rain (1h)" value={`${rain?.["1h"] ?? 0} mm`} />
     </section>
   );
 }

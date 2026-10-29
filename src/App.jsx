@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CloudOff, CloudSun, LoaderCircle, LocateFixed, Search } from "lucide-react";
 import CurrentWeather from "./components/CurrentWeather";
 import Forecast from "./components/Forecast";
+import SunArc from "./components/SunArc";
 import WeatherDetails from "./components/WeatherDetails";
 import WeatherScene from "./components/WeatherScene";
 import { cityDate, getTheme } from "./utils/weather";
@@ -188,6 +189,11 @@ function App() {
                 unit={unit}
               />
             )}
+            <SunArc
+              sunrise={weather.sys.sunrise}
+              sunset={weather.sys.sunset}
+              timezone={weather.timezone}
+            />
             <WeatherDetails weather={weather} unit={unit} />
           </div>
         )}

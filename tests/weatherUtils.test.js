@@ -3,10 +3,12 @@ import {
   cityDate,
   dayName,
   formatCityTime,
+  formatDuration,
   formatTemp,
   formatVisibility,
   formatWind,
   getTheme,
+  sunProgress,
   windDirection,
 } from '../src/utils/weather.js';
 
@@ -69,6 +71,33 @@ describe('city time and date', () => {
 
   it('turns an ISO date into a short weekday', () => {
     expect(dayName('2026-10-29')).toBe('Thu');
+  });
+});
+
+describe('sunProgress', () => {
+  const sunrise = 1000;
+  const sunset = 2000;
+
+  it('is 0 at sunrise, 0.5 at midday and 1 at sunset', () => {
+    expect(sunProgress(1000, sunrise, sunset)).toBe(0);
+    expect(sunProgress(1500, sunrise, sunset)).toBe(0.5);
+    expect(sunProgress(2000, sunrise, sunset)).toBe(1);
+  });
+
+  it('is null before sunrise and after sunset', () => {
+    expect(sunProgress(999, sunrise, sunset)).toBeNull();
+    expect(sunProgress(2001, sunrise, sunset)).toBeNull();
+  });
+});
+
+describe('formatDuration', () => {
+  it.each([
+    [11520, '3h 12m'],
+    [3600, '1h 0m'],
+    [1500, '25m'],
+    [-50, '0m'],
+  ])('%i seconds is %s', (seconds, expected) => {
+    expect(formatDuration(seconds)).toBe(expected);
   });
 });
 

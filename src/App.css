@@ -228,6 +228,7 @@ input {
 .results > :nth-child(2) { animation-delay: 0.08s; }
 .results > :nth-child(3) { animation-delay: 0.16s; }
 .results > :nth-child(4) { animation-delay: 0.24s; }
+.results > :nth-child(5) { animation-delay: 0.32s; }
 
 @keyframes rise {
   from {
@@ -450,10 +451,18 @@ input {
   font-weight: 600;
 }
 
-.updated {
+.local-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-top: 2px;
-  opacity: 0.8;
+  opacity: 0.85;
   font-size: 0.95rem;
+}
+
+.updated {
+  opacity: 0.75;
+  font-size: 0.85rem;
 }
 
 .temp {
@@ -478,6 +487,77 @@ input {
   width: clamp(96px, 22vw, 160px);
   height: auto;
   filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.25));
+}
+
+/* ---------- Sun arc ---------- */
+.sun-card {
+  text-align: center;
+}
+
+.sun-arc {
+  display: block;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+.arc-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.3);
+  stroke-width: 2;
+  stroke-dasharray: 4 6;
+}
+
+.arc-done {
+  fill: none;
+  stroke: #ffb703;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.arc-horizon {
+  stroke: rgba(255, 255, 255, 0.25);
+  stroke-width: 1;
+}
+
+.arc-sun {
+  fill: #ffd166;
+  filter: drop-shadow(0 0 8px rgba(255, 200, 80, 0.9));
+}
+
+.arc-sun.down {
+  fill: rgba(255, 255, 255, 0.5);
+  filter: none;
+}
+
+.sun-status {
+  margin-top: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.sun-times {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.sun-times span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap; /* keep "6:46 AM" on one line on phones */
+}
+
+.day-length {
+  margin-top: 2px;
+  font-size: 0.85rem;
+  opacity: 0.75;
 }
 
 /* ---------- Detail tiles ---------- */
@@ -614,6 +694,15 @@ input {
   .forecast-row {
     grid-template-columns: 3.5rem 2rem 2.5rem 1fr 2.5rem;
     gap: 8px;
+  }
+
+  /* Smaller moon in the gap between the logo and the °C/°F toggle */
+  .scene-moon {
+    top: 14px;
+    right: 34%;
+    width: 52px;
+    height: 52px;
+    box-shadow: inset -14px -5px 0 0 rgba(255, 252, 230, 0.95);
   }
 }
 

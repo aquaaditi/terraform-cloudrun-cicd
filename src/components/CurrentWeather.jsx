@@ -1,17 +1,20 @@
-import { MapPin } from "lucide-react";
+import { Clock, MapPin } from "lucide-react";
 import WeatherIcon from "./WeatherIcon";
+import { useNow } from "../hooks/useNow";
 import { formatCityTime, formatTemp } from "../utils/weather";
 
-const UPDATED_FORMAT = {
+const LOCAL_FORMAT = {
   weekday: "long",
   day: "numeric",
   month: "long",
   hour: "numeric",
   minute: "2-digit",
 };
+const TIME = { hour: "numeric", minute: "2-digit" };
 
-// The main card: city, local time, big temperature and condition
+// The main card: city, live local time, big temperature and condition
 export default function CurrentWeather({ weather, unit }) {
+  const now = useNow(); // ticks, so the city's clock keeps moving
   const condition = weather.weather[0];
 
   return (
@@ -22,14 +25,18 @@ export default function CurrentWeather({ weather, unit }) {
           {weather.name}
           {weather.sys?.country && <span className="country">{weather.sys.country}</span>}
         </h2>
-        {/* dt = when OpenWeatherMap measured this, shown in the city's own timezone */}
-        <p className="updated">
-          {formatCityTime(weather.dt, weather.timezone, UPDATED_FORMAT)} (local time)
+        <p className="local-time">
+          <Clock size={15} aria-hidden="true" />
+          {formatCityTime(now, weather.timezone, LOCAL_FORMAT)}
         </p>
 
         <p className="temp">{formatTemp(weather.main.temp, unit)}</p>
         <p className="condition">{condition.description}</p>
-        <p className="feels-like">Feels like {formatTemp(weather.main.feels_like, unit)}</p>
+        <p className="feels-like">
+          Feels like {formatTemp(weather.main.feels_like, unit)}
+          {/* dt = when OpenWeatherMap measured this data */}
+          <span className="updated"> · Updated {formatCityTime(weather.dt, weather.timezone, TIME)}</span>
+        </p>
       </div>
 
       <WeatherIcon main={condition.main} icon={condition.icon} size={160} className="current-icon" />

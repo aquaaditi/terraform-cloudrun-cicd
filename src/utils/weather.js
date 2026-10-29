@@ -45,6 +45,20 @@ export function dayName(isoDate) {
   );
 }
 
+// How far the sun is through the day: 0 at sunrise, 1 at sunset, null while it's down
+export function sunProgress(now, sunrise, sunset) {
+  if (now < sunrise || now > sunset) return null;
+  return (now - sunrise) / (sunset - sunrise);
+}
+
+// 11520 seconds -> "3h 12m"
+export function formatDuration(seconds) {
+  const totalMinutes = Math.max(0, Math.round(seconds / 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
 // Background theme from the condition and day/night.
 // OpenWeatherMap icon codes end in "d" (day) or "n" (night), e.g. "01n".
 export function getTheme(main, icon) {
