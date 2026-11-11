@@ -8,6 +8,10 @@ on:
     branches: [main]
   push:
     branches: [main]
+    # Documentation-only changes don't need a new image or a redeploy
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
 
 # Read-only by default. Jobs that talk to Google Cloud add id-token: write.
 permissions:
