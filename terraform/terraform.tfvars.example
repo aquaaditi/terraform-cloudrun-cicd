@@ -1,0 +1,8 @@
+# Copy to terraform.tfvars and fill in real values. terraform.tfvars is gitignored.
+project_id  = "your-project-id"
+alert_email = "you@example.com"
+
+# Optional overrides (defaults shown)
+# region            = "asia-south1"
+# service_name      = "skycast"
+# github_repository = "aquaaditi/terraform-cloudrun-cicd"
