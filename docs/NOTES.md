@@ -348,3 +348,66 @@ The phone screenshots showed two layout problems. The sun card times wrapped ont
 
 ### Stopping only my own processes
 My cleanup command once missed my test server, because Windows did not mark it as listening. I found it by its process ID and checked its full command before stopping it, so I would not stop anything of the user's. Always check what a process is before you kill it.
+
+---
+
+## Day 5: Terraform, CI/CD and going live
+
+### What is Terraform?
+Terraform lets me describe cloud resources in code files instead of clicking in the console. I write what I want, Terraform compares it with what exists, and creates or changes only the difference. This is called Infrastructure as Code. The same code always builds the same setup, and it lives in git like the app.
+
+### Providers, variables and outputs
+A provider is a plugin that lets Terraform talk to a cloud. I use the Google provider, pinned to version 8.x so a big update cannot break my code. Variables are inputs like my project ID and region, so nothing personal is written in the code. Outputs are values Terraform prints at the end, like my live URLs.
+
+### The state file and the remote backend
+Terraform remembers what it created in a state file. I keep it in a Google Cloud Storage bucket instead of on my laptop, with versioning turned on so old copies can be recovered. State can contain secrets, so it must never go into git.
+
+### The bootstrap problem
+Terraform needs a project, billing and a state bucket before it can run, but it cannot create the bucket it stores its own state in. So I wrote a small bootstrap script for these one-time steps. It is safe to run again because every step skips work that is already done.
+
+### init, plan and apply
+terraform init downloads the provider and connects to the state bucket. terraform plan shows what would change and changes nothing, so I always read it first. terraform apply makes the changes after I type yes. My plan said 27 resources to add and 0 to destroy.
+
+### Enabling APIs
+A new Google Cloud project has most services switched off. My Terraform turns on only the APIs SkyCast needs, like Cloud Run, Artifact Registry and Secret Manager.
+
+### Artifact Registry
+This is my private Docker image store in Mumbai. GitHub Actions pushes images there and Cloud Run pulls them. Cleanup rules keep the 10 newest images for rollbacks and delete old untagged ones, so storage stays inside the free tier.
+
+### Service accounts and least privilege
+A service account is an identity for a program. skycast-run is what my container runs as, and it can only read one secret. skycast-deployer is what GitHub Actions becomes, and it can only push to my one repository and deploy my two services. Each permission is given on one specific resource, never on the whole project.
+
+### Keeping the secret out of Terraform
+Terraform creates only the empty secret. I added the API key value with gcloud, straight from my .env file. If the key went through Terraform, it would be saved in plain text in the state file.
+
+### Cloud Run settings
+I have two services: staging and production. Both scale to zero, so they cost nothing when nobody uses them. They have a maximum number of instances, which caps the cost. CPU is billed only while a request is being handled. The API key arrives as an environment variable from Secret Manager.
+
+Terraform needs an image to create a service, but my image did not exist yet. So it starts with Google's small hello image, and ignore_changes tells Terraform to leave the image alone after that, because the pipeline now owns it.
+
+### Workload Identity Federation
+In the old way, people downloaded a key file and pasted it into GitHub. If it leaked, it worked forever. With Workload Identity Federation, GitHub gives my workflow a signed token saying which repository it is. Google checks it, only accepts my repository, and gives back a password-like token that lasts about one hour. No key file exists anywhere.
+
+### GitHub Actions pipeline
+My workflow has four jobs that run one after another. Test runs lint, 58 tests, a security audit and the build on every pull request. On main it then builds the Docker image, tags it with the commit ID and pushes it. Next it deploys to staging and checks /health. Finally production waits for my approval and deploys the same image.
+
+### Variables, not secrets
+My GitHub settings like the project ID are stored as variables, not secrets. They do not give access on their own. Access only comes from the token GitHub creates for my repository.
+
+### Environments and approval
+GitHub Environments add rules to a deployment. Staging has no rules. Production needs my approval, only allows the main branch, and does not let admins skip the approval. Every production release is a clear, recorded decision.
+
+### Build once, deploy many
+The image deployed to production is the exact same image that already passed staging. I checked that both services show the same image tag. Building again for production could create a slightly different image.
+
+### Skipping deploys for documentation
+I told the pipeline to skip building and deploying when only Markdown or docs files change. A README fix does not need a new release.
+
+### Rollback
+Cloud Run keeps every version of my app as a revision. If a release is bad, I send all traffic back to the previous revision. This takes seconds and needs no rebuild. I practised this on staging and wrote a runbook with the steps, so nobody has to think hard during an incident.
+
+### Monitoring
+Google checks my production /health every 15 minutes from three regions. If two or more fail, I get an email that tells me what to do.
+
+### My problems today
+The browser login for Terraform kept failing because a permission checkbox was not ticked. Instead I gave Terraform a short-lived token from my existing gcloud login. I also named a GitHub environment with my username by mistake and fixed it. Docker Desktop once lost contact with WSL, but my images are now built on GitHub, so it did not block the pipeline.

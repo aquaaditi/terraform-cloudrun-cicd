@@ -242,6 +242,62 @@ A: I mocked the network inside the browser. Using the DevTools Protocol `Fetch` 
 
 ---
 
+## Terraform and Google Cloud
+
+**Q: Why Terraform instead of clicking in the console?**
+A: Infrastructure as Code makes the setup repeatable, reviewable and versioned. All 27 resources (APIs, Artifact Registry, service accounts, IAM bindings, the secret, two Cloud Run services, Workload Identity Federation and monitoring) live in git. `terraform plan` shows changes before they happen, and `destroy` removes everything cleanly.
+
+**Q: Where is your Terraform state, and why?**
+A: In a GCS bucket with versioning, configured as a `gcs` backend. Remote state is backed up, can be shared with teammates or CI, and versioning lets me recover an older copy. State can hold sensitive values, so it's never committed: `.gitignore` excludes `*.tfstate*`.
+
+**Q: How did you solve the chicken-and-egg problem of the state bucket?**
+A: Terraform can't create the bucket that stores its own state, so I wrote an idempotent bootstrap script for the one-time steps: create the project, link billing, create a budget alert, create the versioned state bucket and write `terraform.tfvars`. Everything after that is Terraform.
+
+**Q: How do you keep secrets out of Terraform state?**
+A: Terraform manages only the Secret Manager secret resource and its IAM binding. The value is added with `gcloud secrets versions add` from my local `.env`, written without a trailing newline. Cloud Run references `version = "latest"` and injects it as an environment variable at startup.
+
+**Q: How did Terraform create Cloud Run services before your image existed?**
+A: The services start with Google's public placeholder image, and `lifecycle { ignore_changes = [template[0].containers[0].image] }` tells Terraform not to manage the image afterwards. The pipeline owns the image from then on, so a later `terraform apply` won't roll production back to the placeholder.
+
+**Q: How did you apply least privilege?**
+A: Two service accounts. The runtime account can only access one secret. The deployer can only write to one Artifact Registry repository, act as the runtime account, and hold `run.developer` on the two Cloud Run services. Every binding is on a specific resource instead of the project, so a compromised pipeline couldn't read secrets or touch anything else.
+
+**Q: How did you keep costs low?**
+A: Scale to zero with `min_instance_count = 0`, request-based CPU billing, max instances of 1 for staging and 2 for production, Artifact Registry cleanup policies, a 15-minute uptime check from the minimum 3 regions, server-side caching, and a ₹500 budget alert created before any resources.
+
+**Q: Your Terraform login failed. What did you do?** *(real story)*
+A: `gcloud auth application-default login` kept failing because the cloud-platform scope wasn't granted on Google's consent screen. Instead of fighting the browser flow, I gave Terraform a short-lived OAuth token from my existing gcloud session through `GOOGLE_OAUTH_ACCESS_TOKEN`, which both the Google provider and the GCS backend support. It expires in about an hour, so nothing long-lived was stored.
+
+---
+
+## CI/CD and GitHub Actions
+
+**Q: Walk me through your pipeline.**
+A: Pull requests run the test job: `npm ci`, ESLint, 58 Jest tests, `npm audit --omit=dev --audit-level=high` and the Vite build. On merge to main, a build job authenticates with Workload Identity Federation, builds the image tagged with the commit SHA and pushes it to Artifact Registry. Then it deploys to staging and smoke-tests `/health`. Production waits for a required reviewer, then deploys the same image and smoke-tests it.
+
+**Q: What is Workload Identity Federation and why use it?**
+A: It lets GitHub Actions authenticate to Google Cloud without a stored key. The workflow requests a signed OIDC token from GitHub, Google's STS verifies it against my provider, which only accepts `assertion.repository == "aquaaditi/terraform-cloudrun-cicd"`, and returns short-lived credentials for the deployer service account. There's no long-lived key to leak or rotate.
+
+**Q: Why are your GCP settings stored as GitHub variables and not secrets?**
+A: The project ID, region, WIF provider name and service account email don't grant access on their own. Access requires a valid OIDC token from my repository. Keeping them as variables keeps them visible in logs and easy to audit, and secrets are reserved for things that really are secret.
+
+**Q: How do you make sure the code in production is what you tested?**
+A: Build once, deploy many. The image is built a single time, tagged with the commit SHA, and the same tag is deployed to staging and then production. I verified both services reference identical image tags. Every running revision traces back to an exact commit.
+
+**Q: How is production protected?**
+A: The `production` GitHub Environment requires a reviewer, only allows deployments from `main`, and has admin bypass disabled. The job can't start until someone approves it, and the approval is logged.
+
+**Q: What is a smoke test?**
+A: A quick check right after deployment that the service basically works. My pipeline curls `/health` on the newly deployed URL with retries and fails the job if it doesn't return success, so a broken staging release never gets promoted.
+
+**Q: How do you roll back?**
+A: Cloud Run keeps every revision, so the fastest rollback is `gcloud run services update-traffic --to-revisions <good>=100`: seconds, no rebuild. Alternatively, `git revert` the bad commit and let the pipeline redeploy, or redeploy a known-good image by its SHA. I documented all three in a runbook and practised the traffic shift on staging.
+
+**Q: What would you improve next?**
+A: Pin GitHub Actions to commit SHAs and add Dependabot, scan images with Trivy in CI, require the test check before merging with branch protection, add a canary release using Cloud Run traffic splitting, and run Terraform plan in CI on pull requests.
+
+---
+
 ## Dependencies
 
 **Q: What's the difference between `npm audit fix` and `npm audit fix --force`?**
