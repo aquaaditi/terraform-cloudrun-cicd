@@ -1,0 +1,128 @@
+# SkyCast CI/CD
+#   Pull request -> test (lint, unit tests, audit, build)
+#   Push to main -> test -> build & push image -> deploy staging -> [approval] -> deploy production
+name: CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Read-only by default. Jobs that talk to Google Cloud add id-token: write.
+permissions:
+  contents: read
+
+# A newer push cancels an older PR run, but a deploy to main is never cancelled halfway
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  REGION: ${{ vars.GCP_REGION }}
+  # One image per commit: the tag is the git SHA, so every deploy is traceable to its code
+  IMAGE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/skycast/skycast:${{ github.sha }}
+
+jobs:
+  test:
+    name: Lint, test and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm # reuse downloaded packages between runs
+
+      - run: npm ci # exact versions from package-lock.json
+      - run: npm run lint
+      - run: npm test
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - run: npm run build
+
+  build:
+    name: Build and push image
+    needs: test
+    if: github.event_name == 'push' # only for main, never for pull requests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # request a GitHub OIDC token for Workload Identity Federation
+    steps:
+      - uses: actions/checkout@v7
+
+      # Exchanges the OIDC token for short-lived Google credentials. No key files.
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: Let Docker push to Artifact Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - run: docker build --tag "$IMAGE" .
+      - run: docker push "$IMAGE"
+
+  deploy-staging:
+    name: Deploy to staging
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - id: deploy
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: skycast-staging
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE }}
+
+      - name: Smoke test /health
+        run: curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors "${{ steps.deploy.outputs.url }}/health"
+
+  deploy-production:
+    name: Deploy to production
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    # The "production" environment requires a manual approval in GitHub before this job starts
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      # Same image that already passed staging: build once, deploy many
+      - id: deploy
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: skycast-production
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE }}
+
+      - name: Smoke test /health
+        run: curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors "${{ steps.deploy.outputs.url }}/health"
