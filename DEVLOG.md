@@ -5,6 +5,34 @@ Plan: [ROADMAP.md](ROADMAP.md) · Study notes: [docs/NOTES.md](docs/NOTES.md) ·
 
 ---
 
+## Day 5 — 2026-11-11 — Terraform, CI/CD and going live
+
+### What I built
+- Terraform for all Google Cloud infrastructure: APIs, Artifact Registry with cleanup rules, two least-privilege service accounts, a Secret Manager secret, staging and production Cloud Run services, Workload Identity Federation for GitHub, and an uptime check with an email alert. 27 resources, with state in a versioned GCS bucket.
+- A bootstrap script for the one-time setup (project, billing, ₹500 budget alert, state bucket) and an apply script that stores the API key in Secret Manager without it ever touching Terraform state.
+- A GitHub Actions pipeline: tests on every pull request; on main it builds an image tagged with the commit SHA, deploys to staging with a smoke test, then deploys the same image to production after my approval.
+- GitHub Environments: staging, and production with a required reviewer, main branch only and no admin bypass.
+- My first two pull requests, a rollback runbook, the README, and a rule that documentation-only changes skip the deploy.
+
+### What I learned
+- Terraform basics: providers, variables, outputs, plan before apply, remote state, and ignore_changes.
+- Least privilege in practice: permissions on one resource, not the whole project.
+- How Workload Identity Federation replaces key files with short-lived tokens.
+- Build once, deploy many: production runs the exact image that passed staging.
+- Rolling back with Cloud Run revisions takes seconds and needs no rebuild.
+
+### Problems and how I fixed them
+- **A placeholder in a command.** I ran gcloud projects create with YOUR-PROJECT-ID literally. Project IDs must be lowercase, so I chose skycast-aditi-1111 and stored it in a variable.
+- **No billing account.** Cloud Run needs billing even inside the free tier. I created a billing account in the console first.
+- **Terraform's browser login failed.** The cloud-platform permission checkbox was not ticked. Instead of fighting it, Terraform now uses a short-lived token from my existing gcloud login.
+- **Wrong GitHub environment name.** I named an environment after my username. The workflow looks for staging and production, so I deleted it and created the right ones.
+- **Docker Desktop lost contact with WSL.** Restarting fixed it, and it did not block anything because images are now built on GitHub's runners.
+
+### Result
+SkyCast is live in production and staging on Cloud Run. The first pipeline run passed every job, and both services run the same image tag. About 70 commits and 2 pull requests.
+
+---
+
 ## Day 4 — 2026-10-29 — Caching, Docker and a living interface
 
 ### What I built
@@ -117,8 +145,8 @@ The full app runs on one server at localhost:8080. The DevTools Network tab show
 
 ---
 
-## Next session — Day 5
-- Part 2 of the SkyCast upgrade (backend, with tests): hourly forecast for the next 24 hours, chance of rain per day, an /api/air route for the Air Quality Index, and an /api/places route for city suggestions.
-- Part 3 (UI): mood line and what to wear, alerts banner, AQI card, hourly SVG chart with best time to go out, golden-hour sky, recent searches, voice search and autocomplete.
-- Part 4 (extras): compare two cities, and PWA install with offline mode.
-- Then Phase 3: Terraform, starting with a budget alert.
+## Next steps
+- Add screenshots to docs/screenshots and link them in the README.
+- Optional hardening: pin GitHub Actions to commit SHAs, Dependabot, a Trivy image scan, and branch protection that requires the test check.
+- Optional SkyCast extras (hourly forecast, AQI, city search, smart tips, compare cities, PWA), each released through the pipeline on its own branch and pull request.
+- When finished showing the project: run terraform destroy to avoid charges.
